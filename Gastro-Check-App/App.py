@@ -1,3 +1,4 @@
+import math
 import tkinter as tk
 import cv2
 import os
@@ -183,6 +184,33 @@ class Application:
         self.array_data_label = tk.Label(self.array_frame, text="", font=("Arial", 12), bg="LightSkyBlue1")
         self.array_data_label.pack()
 
+        # Part 3 (continued): Display Additional Tracked Data
+
+        self.array_label_2 = tk.Label(self.array_frame, text="Tracked Motion Data", font=("Arial", 14), bg="LightSkyBlue1")
+        self.array_label_2.pack()
+
+        # Create labels for each tracked data with placeholders for the variables
+        self.time_label = tk.Label(self.array_frame, text="Time: VariableWithNamePathLength", font=("Arial", 12), bg="LightSkyBlue1")
+        self.time_label.pack()
+
+        self.path_length_label = tk.Label(self.array_frame, text="Path Length: VariableWithNamePathLength", font=("Arial", 12), bg="LightSkyBlue1")
+        self.path_length_label.pack()
+
+        self.angular_length_label = tk.Label(self.array_frame, text="Angular Length: VariableWithNameAngularLength", font=("Arial", 12), bg="LightSkyBlue1")
+        self.angular_length_label.pack()
+
+        self.response_orientation_label = tk.Label(self.array_frame, text="Response Orientation: VariableWithNameResponseOrientation", font=("Arial", 12), bg="LightSkyBlue1")
+        self.response_orientation_label.pack()
+
+        self.depth_perception_label = tk.Label(self.array_frame, text="Depth Perception: VariableWithNameDepthPerception", font=("Arial", 12), bg="LightSkyBlue1")
+        self.depth_perception_label.pack()
+
+        self.motion_smoothness_label = tk.Label(self.array_frame, text="Motion Smoothness: VariableWithNameMotionSmoothness", font=("Arial", 12), bg="LightSkyBlue1")
+        self.motion_smoothness_label.pack()
+
+        self.average_velocity_label = tk.Label(self.array_frame, text="Average Velocity: VariableWithNameAverageVelocity", font=("Arial", 12), bg="LightSkyBlue1")
+        self.average_velocity_label.pack()
+
         # Part 4: Display GI tract illustration
         self.gi_frame = tk.Frame(self.root, bg="LightSkyBlue1")
         self.gi_frame.grid(row=0, column=2, padx=5, pady=5)
@@ -191,7 +219,6 @@ class Application:
         self.gi_image = Image.open("gi_tract_model.png")  # Replace with your actual image path
         self.gi_image = self.gi_image.resize((400, 600), Image.Resampling.LANCZOS)  # Use LANCZOS for high-quality downscaling
         self.gi_image_tk = ImageTk.PhotoImage(self.gi_image)
-
 
         self.gi_label = tk.Label(self.gi_frame, image=self.gi_image_tk)
         self.gi_label.pack()
@@ -205,12 +232,43 @@ class Application:
 
         self.is_procedure_running = False
         self.print_thread = None  # Thread for continuous printing
+        self.update_data_flag = False
 
         # Initialize the NDI tracker
         self.tracker = tracker
 
         # Initialize Tracked_Motion_Data array
         self.Tracked_Motion_Data = []
+
+    def update_tracked_data(self):
+        timestamp_array = []
+        trans_matrix = []
+
+        for (timeStamp, data) in self.Tracked_Motion_Data:
+            timestamp_array.append(timeStamp)
+            trans_matrix.append(data)
+
+        time = self.calculateTime(timestamp_array)
+        path_length = self.calculatePathLength(trans_matrix)
+        angular_length = self.calculateAngularLength(trans_matrix)
+        response_orientation = self.calculateResponseOrientation(trans_matrix)
+        depth_perception = self.calculateDepthPerception(trans_matrix)
+        motion_smoothness = self.calculateMotionSmoothness(trans_matrix, timestamp_array)
+        average_velocity = self.calculateAverageVelocity(trans_matrix, timestamp_array)
+
+        self.time_label.config(text=f"Time: {time}")
+        self.path_length_label.config(text=f"Path Length: {path_length}")
+        self.angular_length_label.config(text=f"Angular Length: {angular_length}")
+        self.response_orientation_label.config(text=f"Response Orientation: {response_orientation}")
+        self.depth_perception_label.config(text=f"Depth Perception: {depth_perception}")
+        self.motion_smoothness_label.config(text=f"Motion Smoothness: {motion_smoothness}")
+        self.average_velocity_label.config(text=f"Average Velocity: {average_velocity}")
+
+    # Function to run update_tracked_data every 5 seconds
+    def update_data_periodically(self):
+        if self.update_data_flag:
+            self.update_tracked_data()  # Call the update function
+            self.root.after(1000, self.update_data_periodically)  # Schedule the next call after 1 seconds
 
     def start_procedure(self, tracker):
         """Start the procedure and the timer."""
@@ -224,8 +282,11 @@ class Application:
         self.is_procedure_running = True
         self.print_thread = threading.Thread(target=self.print_tracker_data)
         self.print_thread.start()
+        self.update_data_flag = True
 
         self.start_button.config(text="Stop Procedure", command=partial(self.stop_procedure, tracker))
+
+        self.update_data_periodically()
 
     def update_timer(self):
         """Update the timer every second."""
@@ -251,6 +312,8 @@ class Application:
         
 
         self.is_procedure_running = False
+        self.update_tracked_data()
+        self.update_data_flag = False
         if self.print_thread:
                 self.print_thread.join()
         tracker.stop_tracking()
@@ -276,43 +339,28 @@ class Application:
         """Continuously print tracker data while the procedure is running."""
         while self.is_procedure_running:
             data = tracker.get_frame()[3]
-            T_ref = data[0]
-            T_sensor = data[1]
-            T_ref_inv = np.linalg.inv(T_ref)
-            T_sensor_rel_ref = np.dot(T_ref_inv, T_sensor)
-            elapsedTime = time.time() - self.start_time
-            six.print_(T_sensor_rel_ref, elapsedTime)
-            self.Tracked_Motion_Data.append([elapsedTime, T_sensor_rel_ref])  # Append data to Tracked_Motion_Data
-            time.sleep(0.5)  # Adjust the sleep time as needed   
+            if not (np.isnan(data).any()):
+                T_ref = data[0]
+                T_sensor = data[1]
+                T_ref_inv = np.linalg.inv(T_ref)
+                T_sensor_rel_ref = np.dot(T_ref_inv, T_sensor)
+                elapsedTime = time.time() - self.start_time
+                #six.print_(T_sensor_rel_ref, elapsedTime)
+                self.Tracked_Motion_Data.append([elapsedTime, T_sensor_rel_ref])  # Append data to Tracked_Motion_Data
+                time.sleep(0.1)  # Adjust the sleep time as needed
+
 
     def save_data_to_csv(self, filename):
-        """
-        Save Tracked_Motion_Data to a CSV file, skipping the first entry.
-
-        Args:
-            filename (str): The path to the CSV file where data will be saved.
-
-        Notes:
-            The CSV file will contain two columns:
-            - Timestamp
-            - InstrumentPositionRelative2Reference
-
-            The first entry in `self.Tracked_Motion_Data` is skipped.
-        """
         with open(filename, mode='w', newline='') as file:
             writer = csv.writer(file)
             
             # Optionally write header row (uncomment if needed)
             # writer.writerow(['Timestamp', 'InstrumentPositionRelative2Reference'])
             
-            # Iterate over `Tracked_Motion_Data` starting from the second entry
-            for i, (timeStamp, data) in enumerate(self.Tracked_Motion_Data):
-                if i == 0:
-                    # Skip the first entry
-                    continue
+            # Iterate over `Tracked_Motion_Data`
+            for (timeStamp, data) in self.Tracked_Motion_Data:
                 writer.writerow([timeStamp, data])
-
-
+            
     def start_again(self, tracker):
         """Reset the application state to start again."""
         self.digit_recognizer.seen_digits = []  # Clear seen digits
@@ -327,6 +375,107 @@ class Application:
         self.video_feed.stop()
         self.root.destroy()
         tracker.close()
+    
+    # Motion Metric Calculators
+    def calculateTime(self, timeStamps):
+        if len(timeStamps) > 1:
+            result = timeStamps[-1] - timeStamps[0]
+        else:
+            result = 0  # or handle the case appropriately, maybe setting result to 0 or some default value
+
+        result = round(result*10)/10
+        return result
+
+    def calculatePathLength(self, Tvector):
+        result = 0
+        for i in range(1,len(Tvector)):
+            result = result + math.sqrt((Tvector[i][0][3]-Tvector[i - 1][0][3])**2+(Tvector[i][1][3]-Tvector[i - 1][1][3])**2+(Tvector[i][2][3]-Tvector[i - 1][2][3])**2)
+        result = result/1000
+        result = round(result*100)/100
+        return result
+
+    def calculateAngularLength(self, Tvector):
+        resultXY=0
+        for i in range(1,len(Tvector)):
+            temp=self.calculateAngleDistance(Tvector[i],Tvector[i - 1])
+            resultXY=resultXY + math.sqrt(temp[0]**2+temp[1]**2)
+        return resultXY
+
+    def calculateAngleDistance(self, T1,T2):
+        angles = [0,0,0]
+        R11=T2[0][0] * T1[0][0] + T2[0][1] * T1[0][1] + T2[0][2] * T1[0][2]
+        R21=T2[1][0] * T1[0][0] + T2[1][1] * T1[0][1] + T2[1][2] * T1[0][2]
+        R31=T2[2][0] * T1[0][0] + T2[2][1] * T1[0][1] + T2[2][2] * T1[0][2]
+        R32=T2[2][0] * T1[1][0] + T2[2][1] * T1[1][1] + T2[2][2] * T1[1][2]
+        R33=T2[2][0] * T1[2][0] + T2[2][1] * T1[2][1] + T2[2][2] * T1[2][2]
+        angles[0]=math.atan2(R21,R11)
+        angles[1]=math.atan2(- R31,math.sqrt(R32 * R32 + R33 * R33))
+        angles[2]=math.atan2(R32,R33)
+        return angles
+
+    def calculateResponseOrientation(self, Tvector):
+        result=0
+        for i in range(1,len(Tvector)):
+            temp=self.calculateAngleDistance(Tvector[i],Tvector[i - 1])
+            result=result + math.fabs(temp[2])
+        return result
+
+    def calculateDepthPerception(self, Tvector):
+        result = 0
+        for i in range(1,len(Tvector)):
+            result = result + math.fabs((Tvector[i][2][3]-Tvector[i - 1][2][3]))
+        return result/1000
+
+    def calculateMotionSmoothness(self, Tvector, timeStamps):
+        if len(timeStamps) < 1:
+            return 0
+        
+        T=timeStamps[-1];
+        d1x_dt1=[]; d1y_dt1=[]; d1z_dt1=[]; deltaT = []; timeStampsNew = [];
+        for i in range(1,len(Tvector)):
+            deltaT.append(timeStamps[i]-timeStamps[i-1])
+            d1x_dt1.append((Tvector[i][0][3] - Tvector[i-1][0][3]) / deltaT[i-1])
+            d1y_dt1.append((Tvector[i][1][3] - Tvector[i-1][1][3]) / deltaT[i-1])
+            d1z_dt1.append((Tvector[i][2][3] - Tvector[i-1][2][3]) / deltaT[i-1])
+            timeStampsNew.append((timeStamps[i]+timeStamps[i-1])/2)
+        timeStamps = timeStampsNew
+
+        d2x_dt2=[]; d2y_dt2=[]; d2z_dt2=[]; deltaT = []; timeStampsNew = [];
+        for i in range(1,len(d1x_dt1)):
+            deltaT.append(timeStamps[i]-timeStamps[i-1])
+            d2x_dt2.append((d1x_dt1[i] - d1x_dt1[i-1]) / deltaT[i-1])
+            d2y_dt2.append((d1y_dt1[i] - d1y_dt1[i-1]) / deltaT[i-1])
+            d2z_dt2.append((d1z_dt1[i] - d1z_dt1[i-1]) / deltaT[i-1])
+            timeStampsNew.append((timeStamps[i]+timeStamps[i-1])/2)
+        timeStamps = timeStampsNew
+
+        d3x_dt3=[]; d3y_dt3=[]; d3z_dt3=[]; deltaT = []; timeStampsNew = [];
+        for i in range(1,len(d2x_dt2)):
+            deltaT.append(timeStamps[i]-timeStamps[i-1])
+            d3x_dt3.append((d2x_dt2[i] - d2x_dt2[i-1]) / deltaT[i-1])
+            d3y_dt3.append((d2y_dt2[i] - d2y_dt2[i-1]) / deltaT[i-1])
+            d3z_dt3.append((d2z_dt2[i] - d2z_dt2[i-1]) / deltaT[i-1])
+            timeStampsNew.append((timeStamps[i]+timeStamps[i-1])/2)
+        timeStamps = timeStampsNew
+
+        j = [(x**2 + y**2 +z**2) for x, y ,z in zip(d3x_dt3, d3y_dt3, d3z_dt3)]
+        MS = math.sqrt((1 / (2*T)) * np.trapz(j,timeStamps))
+        return MS*10**6     # m/s^3
+
+    def calculateVelocity(self, Tvector,timeStamps):
+        velocity = []
+        for i in range(1,len(Tvector)):
+            distance = math.sqrt((Tvector[i][0][3]-Tvector[i - 1][0][3])**2+(Tvector[i][1][3]-Tvector[i - 1][1][3])**2+(Tvector[i][2][3]-Tvector[i - 1][2][3])**2)
+            deltaT = timeStamps[i]-timeStamps[i-1]
+            velocity.append(distance / deltaT * 1000)
+        return velocity # mm/s
+
+    def calculateAverageVelocity(self, Tvector,timeStamps):
+        if len(timeStamps) < 1:
+            return 0
+        
+        meanVelocity = np.mean(self.calculateVelocity(Tvector,timeStamps))
+        return meanVelocity
     
 
 # Main Application Entry

@@ -131,7 +131,7 @@ class VideoFeed:
                     self.update_seen_digits_display()
 
             # Continue updating after a short delay
-            self.window.after(10, self.update_video)
+            self.window.after(1000, self.update_video)
 
 
     def update_seen_digits_display(self):
@@ -190,25 +190,25 @@ class Application:
         self.array_label_2.pack()
 
         # Create labels for each tracked data with placeholders for the variables
-        self.time_label = tk.Label(self.array_frame, text="Time: VariableWithNamePathLength", font=("Arial", 12), bg="LightSkyBlue1")
+        self.time_label = tk.Label(self.array_frame, text="Time: 0", font=("Arial", 12), bg="LightSkyBlue1")
         self.time_label.pack()
 
-        self.path_length_label = tk.Label(self.array_frame, text="Path Length: VariableWithNamePathLength", font=("Arial", 12), bg="LightSkyBlue1")
+        self.path_length_label = tk.Label(self.array_frame, text="Path Length: 0", font=("Arial", 12), bg="LightSkyBlue1")
         self.path_length_label.pack()
 
-        self.angular_length_label = tk.Label(self.array_frame, text="Angular Length: VariableWithNameAngularLength", font=("Arial", 12), bg="LightSkyBlue1")
+        self.angular_length_label = tk.Label(self.array_frame, text="Angular Length: 0", font=("Arial", 12), bg="LightSkyBlue1")
         self.angular_length_label.pack()
 
-        self.response_orientation_label = tk.Label(self.array_frame, text="Response Orientation: VariableWithNameResponseOrientation", font=("Arial", 12), bg="LightSkyBlue1")
+        self.response_orientation_label = tk.Label(self.array_frame, text="Response Orientation: 0", font=("Arial", 12), bg="LightSkyBlue1")
         self.response_orientation_label.pack()
 
-        self.depth_perception_label = tk.Label(self.array_frame, text="Depth Perception: VariableWithNameDepthPerception", font=("Arial", 12), bg="LightSkyBlue1")
+        self.depth_perception_label = tk.Label(self.array_frame, text="Depth Perception: 0", font=("Arial", 12), bg="LightSkyBlue1")
         self.depth_perception_label.pack()
 
-        self.motion_smoothness_label = tk.Label(self.array_frame, text="Motion Smoothness: VariableWithNameMotionSmoothness", font=("Arial", 12), bg="LightSkyBlue1")
+        self.motion_smoothness_label = tk.Label(self.array_frame, text="Motion Smoothness: 0", font=("Arial", 12), bg="LightSkyBlue1")
         self.motion_smoothness_label.pack()
 
-        self.average_velocity_label = tk.Label(self.array_frame, text="Average Velocity: VariableWithNameAverageVelocity", font=("Arial", 12), bg="LightSkyBlue1")
+        self.average_velocity_label = tk.Label(self.array_frame, text="Average Velocity: 0", font=("Arial", 12), bg="LightSkyBlue1")
         self.average_velocity_label.pack()
 
         # Part 4: Display GI tract illustration
@@ -347,7 +347,7 @@ class Application:
                 elapsedTime = time.time() - self.start_time
                 #six.print_(T_sensor_rel_ref, elapsedTime)
                 self.Tracked_Motion_Data.append([elapsedTime, T_sensor_rel_ref])  # Append data to Tracked_Motion_Data
-                time.sleep(0.1)  # Adjust the sleep time as needed
+                #time.sleep(0.8)  # Adjust the sleep time as needed
 
 
     def save_data_to_csv(self, filename):

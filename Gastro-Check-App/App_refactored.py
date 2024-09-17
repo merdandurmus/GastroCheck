@@ -12,7 +12,7 @@ from PIL import Image, ImageTk
 import tkinter as tk
 from tkinter import Label, Frame, Button
 
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model # type: ignore
 from sksurgerynditracker.nditracker import NDITracker
 import six
 

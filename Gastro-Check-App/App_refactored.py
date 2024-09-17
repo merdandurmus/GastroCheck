@@ -125,7 +125,7 @@ class VideoFeed:
             ret, frame = self.read_frame()
             if ret:
                 predicted_class = self.process_frame_and_recognize_digit(frame)
-                self.display_frame(frame, predicted_class)
+                # self.display_frame(frame, predicted_class)
 
                 # Update seen digits display if procedure is running
                 if self.digit_recognizer.update_digits:
@@ -143,22 +143,22 @@ class VideoFeed:
         _, predicted_class = self.digit_recognizer.process_frame(frame)
         return predicted_class
 
-    def display_frame(self, frame, predicted_class):
-        """Displays the processed frame in the UI with the predicted class and optional blinking dot."""
-        self.digit_recognizer.display_frame(frame, predicted_class, self.blinking_dot)
-        frame_rgb = self.convert_frame_to_rgb(frame)
-        self.update_tkinter_image(frame_rgb)
+    # def display_frame(self, frame, predicted_class):
+    #     """Displays the processed frame in the UI with the predicted class and optional blinking dot."""
+    #     self.digit_recognizer.display_frame(frame, predicted_class, self.blinking_dot)
+    #     frame_rgb = self.convert_frame_to_rgb(frame)
+    #     self.update_tkinter_image(frame_rgb)
 
     def convert_frame_to_rgb(self, frame):
         """Converts the frame to RGB format."""
         return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    def update_tkinter_image(self, frame_rgb):
-        """Converts a frame to Tkinter-compatible format and updates the video display."""
-        img = Image.fromarray(frame_rgb)
-        imgtk = ImageTk.PhotoImage(image=img)
-        self.video_frame.imgtk = imgtk
-        self.video_frame.config(image=imgtk)
+    # def update_tkinter_image(self, frame_rgb):
+    #     """Converts a frame to Tkinter-compatible format and updates the video display."""
+    #     img = Image.fromarray(frame_rgb)
+    #     imgtk = ImageTk.PhotoImage(image=img)
+    #     self.video_frame.imgtk = imgtk
+    #     self.video_frame.config(image=imgtk)
 
     def update_seen_digits_display(self):
         """Updates the label that displays the seen digits."""
@@ -331,7 +331,7 @@ class Application:
                 T_sensor_rel_ref = np.dot(T_ref_inv, data[1])
                 elapsed_time = time.time() - self.start_time
                 self.Tracked_Motion_Data.append([elapsed_time, T_sensor_rel_ref])
-            time.sleep(0.5)
+            #time.sleep(0.5)
 
     def start_again(self):
         self.digit_recognizer.seen_digits = []

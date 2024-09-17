@@ -12,10 +12,10 @@ from PIL import Image, ImageTk
 import tkinter as tk
 from tkinter import Label, Frame, Button
 
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model # type: ignore
 from sksurgerynditracker.nditracker import NDITracker
 import six
-
+import vtk
 
 
 class RealTimeDigitRecognition:
@@ -110,12 +110,12 @@ class VideoFeed:
     def __init__(self, window, video_frame, digit_recognizer, array_data_label):
         self.window = window
         self.video_frame = video_frame
-        self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(0) #1 FOR VIDEO CAPTURE
         self.running = True
         self.digit_recognizer = digit_recognizer
         self.array_data_label = array_data_label
         self.blinking_dot = False  # Control blinking red dot for display
-        self.frame_update_delay = 10  # Delay in ms for video frame updates
+        self.frame_update_delay = 100  # Delay in ms for video frame updates
 
         self.start_video_feed()
 
@@ -225,13 +225,13 @@ class Application:
 
     def create_tracked_data_labels(self):
         self.labels = {
-            'time': self.create_data_label("Time: VariableWithNamePathLength"),
-            'path_length': self.create_data_label("Path Length: VariableWithNamePathLength"),
-            'angular_length': self.create_data_label("Angular Length: VariableWithNameAngularLength"),
-            'response_orientation': self.create_data_label("Response Orientation: VariableWithNameResponseOrientation"),
-            'depth_perception': self.create_data_label("Depth Perception: VariableWithNameDepthPerception"),
-            'motion_smoothness': self.create_data_label("Motion Smoothness: VariableWithNameMotionSmoothness"),
-            'average_velocity': self.create_data_label("Average Velocity: VariableWithNameAverageVelocity")
+            'time': self.create_data_label("Time: 0"),
+            'path_length': self.create_data_label("Path Length: 0"),
+            'angular_length': self.create_data_label("Angular Length: 0"),
+            'response_orientation': self.create_data_label("Response Orientation: 0"),
+            'depth_perception': self.create_data_label("Depth Perception: 0"),
+            'motion_smoothness': self.create_data_label("Motion Smoothness: 0"),
+            'average_velocity': self.create_data_label("Average Velocity: 0")
         }
 
     def create_data_label(self, text):
@@ -248,6 +248,23 @@ class Application:
 
         self.gi_label = Label(self.gi_frame, image=self.gi_image_tk)
         self.gi_label.pack()
+
+        # STL SHOW BUT LOOOOOOTSSS OF COMP POWER, DOES NOT WORK
+        # reader = vtk.vtkSTLReader()
+        # reader.SetFileName("Stomach and Esophagus_STL.stl")
+        # mapper = vtk.vtkPolyDataMapper()
+        # mapper.SetInputConnection(reader.GetOutputPort())
+        # actor = vtk.vtkActor()
+        # actor.SetMapper(mapper)
+        # renderer = vtk.vtkRenderer()
+        # renderWindow = vtk.vtkRenderWindow()
+        # renderWindow.AddRenderer(renderer)
+        # renderWindowInteractor = vtk.vtkRenderWindowInteractor()
+        # renderWindowInteractor.SetRenderWindow(renderWindow)
+        # renderer.AddActor(actor)
+        # renderer.SetBackground(1, 1, 1) # Background color
+        # renderWindow.Render()
+        # renderWindowInteractor.Start()
 
     def update_tracked_data(self):
         timestamp_array, trans_matrix = zip(*self.Tracked_Motion_Data) if self.Tracked_Motion_Data else ([], [])
@@ -331,10 +348,10 @@ class Application:
                 T_sensor_rel_ref = np.dot(T_ref_inv, data[1])
                 elapsed_time = time.time() - self.start_time
                 self.Tracked_Motion_Data.append([elapsed_time, T_sensor_rel_ref])
-            time.sleep(0.5)
+            time.sleep(0.025)
 
     def start_again(self):
-        self.digit_recognizer.seen_digits = []
+        self.digit_recognizer.seen_digits = set()  # Use set for faster lookups
         self.Tracked_Motion_Data = []
         self.array_data_label.config(text="")
         self.timer_label.config(text="Time: 0:00", fg="black")
@@ -347,34 +364,106 @@ class Application:
         self.tracker.close()
 
     # Motion Metric Calculators
-    def calculate_time(self, timestamps):
-        return round(timestamps[-1] - timestamps[0], 1) if timestamps else 0
+    def calculate_time(self, timeStamps):
+        if len(timeStamps) > 1:
+            result = timeStamps[-1] - timeStamps[0]
+        else:
+            result = 0  # or handle the case appropriately, maybe setting result to 0 or some default value
+
+        result = round(result*10)/10
+        return result
 
     def calculate_path_length(self, Tvector):
-        return round(sum(math.sqrt(sum((Tvector[i][j][3] - Tvector[i-1][j][3])**2 for j in range(3))) for i in range(1, len(Tvector))) / 1000, 2)
+        result = 0
+        for i in range(1,len(Tvector)):
+            result = result + math.sqrt((Tvector[i][0][3]-Tvector[i - 1][0][3])**2+(Tvector[i][1][3]-Tvector[i - 1][1][3])**2+(Tvector[i][2][3]-Tvector[i - 1][2][3])**2)
+        result = result/1000
+        result = round(result*100)/100
+        return result
 
     def calculate_angular_length(self, Tvector):
-        return sum(math.sqrt(sum(self.calculate_angle_distance(Tvector[i], Tvector[i-1])[:2]**2)) for i in range(1, len(Tvector)))
+        resultXY=0
+        for i in range(1,len(Tvector)):
+            temp=self.calculateAngleDistance(Tvector[i],Tvector[i - 1])
+            resultXY=resultXY + math.sqrt(temp[0]**2+temp[1]**2)
+        return resultXY
 
-    def calculate_angle_distance(self, T1, T2):
-        R11, R21, R31 = np.dot(T2[:3, :3], T1[:3, :3].T).flat[:3]
-        R32, R33 = np.dot(T2[2, :3], T1[1:, :3].T).flat[:2]
-        return np.array([math.atan2(R21, R11), math.atan2(-R31, math.hypot(R32, R33)), math.atan2(R32, R33)])
+    def calculateAngleDistance(self, T1,T2):
+        angles = [0,0,0]
+        R11=T2[0][0] * T1[0][0] + T2[0][1] * T1[0][1] + T2[0][2] * T1[0][2]
+        R21=T2[1][0] * T1[0][0] + T2[1][1] * T1[0][1] + T2[1][2] * T1[0][2]
+        R31=T2[2][0] * T1[0][0] + T2[2][1] * T1[0][1] + T2[2][2] * T1[0][2]
+        R32=T2[2][0] * T1[1][0] + T2[2][1] * T1[1][1] + T2[2][2] * T1[1][2]
+        R33=T2[2][0] * T1[2][0] + T2[2][1] * T1[2][1] + T2[2][2] * T1[2][2]
+        angles[0]=math.atan2(R21,R11)
+        angles[1]=math.atan2(- R31,math.sqrt(R32 * R32 + R33 * R33))
+        angles[2]=math.atan2(R32,R33)
+        return angles
 
     def calculate_response_orientation(self, Tvector):
-        return sum(abs(self.calculate_angle_distance(Tvector[i], Tvector[i-1])[2]) for i in range(1, len(Tvector)))
+        result=0
+        for i in range(1,len(Tvector)):
+            temp=self.calculateAngleDistance(Tvector[i],Tvector[i - 1])
+            result=result + math.fabs(temp[2])
+        return result
 
     def calculate_depth_perception(self, Tvector):
-        return round(sum(abs(Tvector[i][2, 3] - Tvector[i-1][2, 3]) for i in range(1, len(Tvector))) / 1000, 2)
+        result = 0
+        for i in range(1,len(Tvector)):
+            result = result + math.fabs((Tvector[i][2][3]-Tvector[i - 1][2][3]))
+        return result/1000
 
-    def calculate_motion_smoothness(self, Tvector, timestamps):
-        return sum(math.sqrt(sum(self.calculate_angle_distance(Tvector[i], Tvector[i-1])**2)) for i in range(1, len(Tvector)))
+    def calculate_motion_smoothness(self, Tvector, timeStamps):
+        if len(timeStamps) < 1:
+            return 0
+        
+        T=timeStamps[-1];
+        d1x_dt1=[]; d1y_dt1=[]; d1z_dt1=[]; deltaT = []; timeStampsNew = [];
+        for i in range(1,len(Tvector)):
+            deltaT.append(timeStamps[i]-timeStamps[i-1])
+            d1x_dt1.append((Tvector[i][0][3] - Tvector[i-1][0][3]) / deltaT[i-1])
+            d1y_dt1.append((Tvector[i][1][3] - Tvector[i-1][1][3]) / deltaT[i-1])
+            d1z_dt1.append((Tvector[i][2][3] - Tvector[i-1][2][3]) / deltaT[i-1])
+            timeStampsNew.append((timeStamps[i]+timeStamps[i-1])/2)
+        timeStamps = timeStampsNew
 
-    def calculate_average_velocity(self, Tvector, timestamps):
-        time_elapsed = timestamps[-1] - timestamps[0] if timestamps else 1
-        total_distance = self.calculate_path_length(Tvector)
-        return round(total_distance / time_elapsed, 2)
+        d2x_dt2=[]; d2y_dt2=[]; d2z_dt2=[]; deltaT = []; timeStampsNew = [];
+        for i in range(1,len(d1x_dt1)):
+            deltaT.append(timeStamps[i]-timeStamps[i-1])
+            d2x_dt2.append((d1x_dt1[i] - d1x_dt1[i-1]) / deltaT[i-1])
+            d2y_dt2.append((d1y_dt1[i] - d1y_dt1[i-1]) / deltaT[i-1])
+            d2z_dt2.append((d1z_dt1[i] - d1z_dt1[i-1]) / deltaT[i-1])
+            timeStampsNew.append((timeStamps[i]+timeStamps[i-1])/2)
+        timeStamps = timeStampsNew
 
+        d3x_dt3=[]; d3y_dt3=[]; d3z_dt3=[]; deltaT = []; timeStampsNew = [];
+        for i in range(1,len(d2x_dt2)):
+            deltaT.append(timeStamps[i]-timeStamps[i-1])
+            d3x_dt3.append((d2x_dt2[i] - d2x_dt2[i-1]) / deltaT[i-1])
+            d3y_dt3.append((d2y_dt2[i] - d2y_dt2[i-1]) / deltaT[i-1])
+            d3z_dt3.append((d2z_dt2[i] - d2z_dt2[i-1]) / deltaT[i-1])
+            timeStampsNew.append((timeStamps[i]+timeStamps[i-1])/2)
+        timeStamps = timeStampsNew
+
+        j = [(x**2 + y**2 +z**2) for x, y ,z in zip(d3x_dt3, d3y_dt3, d3z_dt3)]
+        MS = math.sqrt((1 / (2*T)) * np.trapz(j,timeStamps))
+        return MS*10**6     # m/s^3
+
+    def calculateVelocity(self, Tvector,timeStamps):
+        velocity = []
+        for i in range(1,len(Tvector)):
+            distance = math.sqrt((Tvector[i][0][3]-Tvector[i - 1][0][3])**2+(Tvector[i][1][3]-Tvector[i - 1][1][3])**2+(Tvector[i][2][3]-Tvector[i - 1][2][3])**2)
+            deltaT = timeStamps[i]-timeStamps[i-1]
+            velocity.append(distance / deltaT * 1000)
+        return velocity # mm/s
+
+    def calculate_average_velocity(self, Tvector,timeStamps):
+        if len(timeStamps) < 1:
+            return 0
+        
+        meanVelocity = np.mean(self.calculateVelocity(Tvector,timeStamps))
+        return meanVelocity
+   
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model

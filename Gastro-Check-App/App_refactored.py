@@ -110,12 +110,12 @@ class VideoFeed:
     def __init__(self, window, video_frame, digit_recognizer, array_data_label):
         self.window = window
         self.video_frame = video_frame
-        self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(0) #1 FOR VIDEO CAPTURE
         self.running = True
         self.digit_recognizer = digit_recognizer
         self.array_data_label = array_data_label
         self.blinking_dot = False  # Control blinking red dot for display
-        self.frame_update_delay = 1000  # Delay in ms for video frame updates
+        self.frame_update_delay = 100  # Delay in ms for video frame updates
 
         self.start_video_feed()
 
@@ -348,7 +348,7 @@ class Application:
                 T_sensor_rel_ref = np.dot(T_ref_inv, data[1])
                 elapsed_time = time.time() - self.start_time
                 self.Tracked_Motion_Data.append([elapsed_time, T_sensor_rel_ref])
-            #time.sleep(1)
+            time.sleep(0.025)
 
     def start_again(self):
         self.digit_recognizer.seen_digits = set()  # Use set for faster lookups

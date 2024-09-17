@@ -115,7 +115,7 @@ class VideoFeed:
         self.digit_recognizer = digit_recognizer
         self.array_data_label = array_data_label
         self.blinking_dot = False  # Control blinking red dot for display
-        self.frame_update_delay = 10  # Delay in ms for video frame updates
+        self.frame_update_delay = 10000  # Delay in ms for video frame updates
 
         self.start_video_feed()
 
@@ -334,7 +334,7 @@ class Application:
             #time.sleep(0.5)
 
     def start_again(self):
-        self.digit_recognizer.seen_digits = []
+        self.digit_recognizer.seen_digits = set()  # Use set for faster lookups
         self.Tracked_Motion_Data = []
         self.array_data_label.config(text="")
         self.timer_label.config(text="Time: 0:00", fg="black")

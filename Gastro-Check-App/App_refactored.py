@@ -57,7 +57,7 @@ class RealTimeDigitRecognition:
         predicted_class = np.argmax(predictions)
         if max_prediction < 0.85:
             return -1
-        return (predicted_class)# -1)
+        return (predicted_class -1)
 
     def process_frame(self, frame):
         """Processes a single frame and updates the seen digits list if required."""
@@ -81,7 +81,7 @@ class RealTimeDigitRecognition:
 
 
 class VideoFeed:
-    def __init__(self, window, video_frame, digit_recognizer, array_data_label):
+    def __init__(self, window, video_frame, digit_recognizer, array_data_label, digit_show_label):
         """
         Initializes the VideoFeed object for capturing and displaying video frames.
 
@@ -102,6 +102,7 @@ class VideoFeed:
         self.running = True
         self.digit_recognizer = digit_recognizer
         self.array_data_label = array_data_label
+        self.digit_show_label = digit_show_label
         self.blinking_dot = False  # Control blinking red dot for display
         self.frame_update_delay = 100  # Delay in ms for video frame updates
 
@@ -114,10 +115,12 @@ class VideoFeed:
             if ret:
                 predicted_class = self.process_frame_and_recognize_digit(frame)
                 self.display_frame(frame, predicted_class)
+                self.update_detecting_digits_display(frame)
 
                 # Update seen digits display if procedure is running
                 if self.digit_recognizer.update_digits:
                     self.update_seen_digits_display()
+                
 
             # Schedule the next video frame update
             self.window.after(self.frame_update_delay, self.start_video_feed)
@@ -152,6 +155,10 @@ class VideoFeed:
         """Updates the label that displays the seen digits."""
         seen_digits_text = ", ".join(map(str, self.digit_recognizer.seen_digits))
         self.array_data_label.config(text=seen_digits_text)
+
+    def update_detecting_digits_display(self, frame):
+        """Updates the label that displays the seen digits."""
+        self.digit_show_label.config(text=self.digit_recognizer.process_frame(frame))
 
     def stop(self):
         """Stops the video feed and releases the camera."""
@@ -205,7 +212,7 @@ class Application:
         self.digit_recognizer = RealTimeDigitRecognition(model)
         self.setup_ui()
 
-        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.array_data_label)
+        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.array_data_label, self.digit_show_label)
         self.start_time = None
         self.running_timer = False
         self.is_procedure_running = False
@@ -350,6 +357,12 @@ class Application:
         """
         self.array_frame = Frame(self.root, bg="LightSkyBlue1")
         self.array_frame.grid(row=1, column=1, padx=10, pady=10)
+
+        self.digit_label = Label(self.array_frame, text="Detecting", font=("Arial", 14), bg="LightSkyBlue1")
+        self.digit_label.pack()
+
+        self.digit_show_label = Label(self.array_frame, text="", font=("Arial", 12), bg="LightSkyBlue1")
+        self.digit_show_label.pack()
 
         self.array_label = Label(self.array_frame, text="Digits Seen", font=("Arial", 14), bg="LightSkyBlue1")
         self.array_label.pack()
@@ -921,7 +934,7 @@ class Application:
 if __name__ == "__main__":
     # Load your trained CNN model
     model_dir = 'models'
-    model_name = 'sudoscan.h5'
+    model_name = 'Digit_Classifier_Gastro_Images_EXTENDED.h5' # WITH SUDOSCAN AND MNIST CHANGE PREDICTION -1 to PREDICTION!
     model_path = os.path.join(model_dir, model_name)
     model = load_model(model_path)  # Replace with your model file
 

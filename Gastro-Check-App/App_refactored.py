@@ -53,19 +53,22 @@ class RealTimeDigitRecognition:
     def predict_digit(self, processed_frame):
         """Runs the model prediction and returns the predicted class."""
         predictions = self.model.predict(processed_frame)
+        max_prediction = np.max(predictions)
         predicted_class = np.argmax(predictions)
-        return predicted_class, predictions
+        if max_prediction < 0.85:
+            return -1
+        return (predicted_class)# -1)
 
     def process_frame(self, frame):
         """Processes a single frame and updates the seen digits list if required."""
         processed_frame = self.preprocess_frame(frame)
-        predicted_class, predictions = self.predict_digit(processed_frame)
+        predicted_class = self.predict_digit(processed_frame)
 
         # Update seen digits if the process is running and the digit is valid
-        if self.update_digits and predicted_class != 6 and predicted_class not in self.seen_digits:
+        if self.update_digits and predicted_class != -1 and predicted_class not in self.seen_digits:
             self.seen_digits.add(predicted_class)
 
-        return predictions, predicted_class
+        return predicted_class
 
     def display_frame(self, frame, predicted_class, blinking_dot):
         """Displays the predicted digit and a blinking dot if the process is running."""
@@ -125,7 +128,7 @@ class VideoFeed:
 
     def process_frame_and_recognize_digit(self, frame):
         """Processes the frame for digit recognition and returns the predicted class."""
-        _, predicted_class = self.digit_recognizer.process_frame(frame)
+        predicted_class = self.digit_recognizer.process_frame(frame)
         return predicted_class
 
     def display_frame(self, frame, predicted_class):
@@ -236,31 +239,33 @@ class Application:
         Example:
         - Calling this method will result in the arrangement of video display, control buttons, data metrics, and graphical images within the main application window.
         """
+        self.root.geometry("1000x700")  # Adjust the overall window size as needed
+
         self.create_video_frame()
         self.create_control_frame()
         self.create_array_frame()
         self.create_gi_frame()
 
+        # Adjust row and column configurations for better layout management
+        self.root.grid_rowconfigure(1, weight=1)
+        self.root.grid_columnconfigure(1, weight=1)
+
     def create_video_frame(self):
         """
         Creates and configures a frame for displaying video content in the user interface.
-
-        This method performs the following actions:
-
-        1. **Creates a Label for Video Display**:
-        - Initializes a `Label` widget named `self.video_frame` to serve as a container for video content.
-        - Configures the label to span two columns in the grid layout (`columnspan=2`), placing it in row 0, column 0.
-
-        This method sets up a label that can be used to display video content within the application's main window.
-
-        Returns:
-        - **None**: This method initializes the video display label but does not return any values.
-
-        Example:
-        - After calling this method, `self.video_frame` will be a label positioned in the top-left corner of the main window, spanning across two columns.
+        
+        This method ensures the video frame has a fixed size so that it does not take up excessive space.
         """
-        self.video_frame = Label(self.root)
-        self.video_frame.grid(row=0, column=0, columnspan=2)
+        # Set a fixed size for the video frame to prevent it from occupying too much space
+        frame_width = 400  # You can adjust the width
+        frame_height = 300  # You can adjust the height
+        
+        self.video_frame = Label(self.root, width=frame_width, height=frame_height)
+        self.video_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
+
+        # Ensure the video frame has fixed proportions and does not resize excessively
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
 
     def create_control_frame(self):
         """
@@ -916,7 +921,7 @@ class Application:
 if __name__ == "__main__":
     # Load your trained CNN model
     model_dir = 'models'
-    model_name = 'my_digit_classifier_with_no_number_class.h5'
+    model_name = 'sudoscan.h5'
     model_path = os.path.join(model_dir, model_name)
     model = load_model(model_path)  # Replace with your model file
 

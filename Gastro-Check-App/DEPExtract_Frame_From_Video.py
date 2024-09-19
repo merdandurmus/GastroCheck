@@ -3,7 +3,7 @@ import os
 
 # Paths
 video_folder = 'Video'
-output_folder = 'Training_Images_test'
+output_folder = 'Training_Images'
 
 # Ensure the output folder exists
 if not os.path.exists(output_folder):

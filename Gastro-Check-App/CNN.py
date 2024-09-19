@@ -7,7 +7,7 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 
 class CustomDigitClassifier:
-    def __init__(self, dataset_path, img_size=(28, 28), num_classes=7):
+    def __init__(self, dataset_path, img_size=(28, 28), num_classes=6):
         self.dataset_path = dataset_path
         self.img_size = img_size
         self.num_classes = num_classes
@@ -32,7 +32,7 @@ class CustomDigitClassifier:
                         if img is not None:
                             img_resized = cv2.resize(img, self.img_size)
                             images.append(img_resized)
-                            labels.append(int(label))  # The folder name is the label
+                            labels.append(int(label) )# + 1)  # The folder name is the label
                         else:
                             print(f"Warning: Failed to load image {img_path}")
                     else:
@@ -64,7 +64,7 @@ class CustomDigitClassifier:
         self.model = model
 
     
-    def train_model(self, train_images, train_labels, test_images, test_labels, epochs=20, batch_size=64):
+    def train_model(self, train_images, train_labels, test_images, test_labels, epochs=9, batch_size=64):
         """Train the CNN model."""
         if self.model is None:
             self.build_model()
@@ -74,7 +74,7 @@ class CustomDigitClassifier:
 
         """Save the CNN model."""
         model_dir = 'models'
-        model_name = 'my_digit_classifier_with_no_number_class.h5'
+        model_name = 'Digit_Classifier_Gastro_Images_MNIST.h5'
         os.makedirs(model_dir, exist_ok=True)
         self.model.save(os.path.join(model_dir, model_name))
         print(f"Model saved to {os.path.join(model_dir, model_name)}")
@@ -94,7 +94,7 @@ class CustomDigitClassifier:
 # Example usage:
 
 # Initialize the classifier with dataset path
-classifier = CustomDigitClassifier(dataset_path='Training_Images')
+classifier = CustomDigitClassifier(dataset_path='Training_Images_MNIST')
 
 # Load dataset
 images, labels = classifier.load_custom_dataset()

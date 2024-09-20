@@ -45,14 +45,27 @@ class RealTimeDigitRecognition:
 
     def preprocess_frame(self, frame):
         """Resizes and converts the frame to grayscale for model prediction."""
+        # Original frame
+        #cv2.imshow('Original Frame', frame)
+
         frame = cv2.resize(frame, (0, 0), fx=self.downscale_factor, fy=self.downscale_factor)
+        #cv2.imshow('Resized Frame', frame)
+
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        resized_frame = cv2.resize(gray_frame, (28, 28))
-        return resized_frame.reshape(1, 28, 28, 1).astype('float32') / 255
+        #cv2.imshow('Grayscale Frame', gray_frame)
+
+        resized_frame = cv2.resize(gray_frame, (200, 200))
+        cv2.imshow('Final Resized Frame', resized_frame)
+
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+
+        return resized_frame.reshape(1, 200, 200, 1).astype('float32') / 255
 
     def predict_digit(self, processed_frame):
         """Runs the model prediction and returns the predicted class."""
         predictions = self.model.predict(processed_frame)
+        print(predictions)
         max_prediction = np.max(predictions)
         predicted_class = np.argmax(predictions)
         if max_prediction < 0.85:
@@ -934,14 +947,14 @@ class Application:
 if __name__ == "__main__":
     # Load your trained CNN model
     model_dir = 'models'
-    model_name = 'Digit_Classifier_Gastro_Images_EXTENDED.h5' # WITH SUDOSCAN AND MNIST CHANGE PREDICTION -1 to PREDICTION!
+    model_name = 'Digit_Classifier_Gastro_Images_MNIST.h5' # WITH SUDOSCAN AND MNIST CHANGE PREDICTION -1 to PREDICTION!
     model_path = os.path.join(model_dir, model_name)
     model = load_model(model_path)  # Replace with your model file
 
     # Set up the tracker
     settings_aurora = {
         "tracker type": "aurora",
-        "ports to probe": 40,
+        "serial port": 4, # Specify port 4 explicitly
         "verbose": True,
     }
     tracker = NDITracker(settings_aurora)

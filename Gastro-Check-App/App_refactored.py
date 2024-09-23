@@ -16,7 +16,7 @@ from sksurgerynditracker.nditracker import NDITracker
 
 
 class RealTimeDigitRecognition:
-    def __init__(self, model, frame_skip=3, downscale_factor=0.5):
+    def __init__(self, model, image_size, downscale_factor=0.5):
         """
         Initializes the RealTimeDigitRecognition object for recognizing digits in video frames.
 
@@ -37,7 +37,7 @@ class RealTimeDigitRecognition:
         - **None**: This method initializes the attributes of the object but does not return any values.
         """
         self.model = model
-        self.frame_skip = frame_skip
+        self.image_size = image_size
         self.downscale_factor = downscale_factor
         self.seen_digits = set()  # Use set for faster lookups
         self.frame_count = 0
@@ -48,19 +48,19 @@ class RealTimeDigitRecognition:
         # Original frame
         #cv2.imshow('Original Frame', frame)
 
-        frame = cv2.resize(frame, (0, 0), fx=self.downscale_factor, fy=self.downscale_factor)
+        #frame = cv2.resize(frame, (0, 0), fx=self.downscale_factor, fy=self.downscale_factor)
         #cv2.imshow('Resized Frame', frame)
 
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        #gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         #cv2.imshow('Grayscale Frame', gray_frame)
 
-        resized_frame = cv2.resize(gray_frame, (200, 200))
-        cv2.imshow('Final Resized Frame', resized_frame)
+        resized_frame = cv2.resize(frame, (self.image_size[0], self.image_size[1]))
+        #cv2.imshow('Final Resized Frame', resized_frame)
 
         #cv2.waitKey(0)
         #cv2.destroyAllWindows()
 
-        return resized_frame.reshape(1, 200, 200, 1).astype('float32') / 255
+        return resized_frame.reshape(1, self.image_size[0], self.image_size[1], self.image_size[2]).astype('float32') / 255
 
     def predict_digit(self, processed_frame):
         """Runs the model prediction and returns the predicted class."""
@@ -70,7 +70,7 @@ class RealTimeDigitRecognition:
         predicted_class = np.argmax(predictions)
         if max_prediction < 0.85:
             return -1
-        return (predicted_class -1)
+        return (predicted_class) #-1)    #CHANGE!!!!
 
     def process_frame(self, frame):
         """Processes a single frame and updates the seen digits list if required."""
@@ -180,7 +180,7 @@ class VideoFeed:
 
 
 class Application:
-    def __init__(self, root, model, tracker):
+    def __init__(self, root, model, tracker, image_size):
         """
         Initializes the application by setting up the main window and configuring necessary components.
 
@@ -221,8 +221,9 @@ class Application:
         self.root = root
         self.root.title("Gastro-Check")
         self.root.configure(bg="LightSkyBlue1")
+        self.image_size = image_size
 
-        self.digit_recognizer = RealTimeDigitRecognition(model)
+        self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size)
         self.setup_ui()
 
         self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.array_data_label, self.digit_show_label)
@@ -758,7 +759,7 @@ class Application:
         - Ensure `self.Tracked_Motion_Data` contains data in the expected format before calling this method.
         - The CSV file will be saved in the 'ProcedureData' directory, which will be created if it does not already exist.
         """
-        folder_path = 'ProcedureData'
+        folder_path = 'Data/ProcedureData'
         os.makedirs(folder_path, exist_ok=True)
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -946,10 +947,10 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    model_dir = 'models'
-    model_name = 'Digit_Classifier_Gastro_Images_MNIST.h5' # WITH SUDOSCAN AND MNIST CHANGE PREDICTION -1 to PREDICTION!
-    model_path = os.path.join(model_dir, model_name)
-    model = load_model(model_path)  # Replace with your model file
+    # model_dir = 'Data/models'
+    # model_name = 'Digit_Classifier_Gastro_200x200_Images_with_-1_15_epoch.h5' # WITH SUDOSCAN AND MNIST CHANGE PREDICTION -1 to PREDICTION!
+    # model_path = os.path.join(model_dir, model_name)
+    model = load_model('Data/models/colour.h5')  # Replace with your model file
 
     # Set up the tracker
     settings_aurora = {
@@ -961,6 +962,6 @@ if __name__ == "__main__":
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model, tracker)
+    app = Application(root, model, tracker, image_size=(50, 50, 3))
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

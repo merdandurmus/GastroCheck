@@ -147,10 +147,11 @@ class CustomDigitClassifier:
 
                     # Check if the file is a valid image before processing
                     if img_name.endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):  # Add image extensions
-                        img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+                        img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
                         
                         # Ensure the image was loaded properly
                         if img is not None:
+                            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB: COLOR_BGR2RGB
                             img_resized = cv2.resize(img, (self.img_size[0], self.img_size[1]))
                             images.append(img_resized)
                             if labelshift:
@@ -172,18 +173,18 @@ class CustomDigitClassifier:
         labels = to_categorical(labels, num_classes=self.num_classes)
 
         print(f"Augementing images...")
-        # Augment images
-        images_augmented = []
-        labels_augmented = []
-        for img, lbl in zip(images, labels):
-            img = img.reshape((1,) + img.shape)
-            for batch in datagen.flow(img, batch_size=1):
-                images_augmented.append(batch[0])
-                labels_augmented.append(lbl)  # Append the correct label
-                break
+        # # Augment images
+        # images_augmented = []
+        # labels_augmented = []
+        # for img, lbl in zip(images, labels):
+        #     img = img.reshape((1,) + img.shape)
+        #     for batch in datagen.flow(img, batch_size=1):
+        #         images_augmented.append(batch[0])
+        #         labels_augmented.append(lbl)  # Append the correct label
+        #         break
         
         print(f"Successfully loaded & augmented dataset: {self.dataset_path}")
-        return np.array(images_augmented), np.array(labels_augmented)
+        return images, labels
 
     def build_model(self):
         print(f"Building model: {self.model_name}" "...")
@@ -221,7 +222,7 @@ class CustomDigitClassifier:
         self.model = model
         print(f"Model built!")
     
-    def train_model(self, train_images, train_labels, test_images, test_labels, epochs=13, batch_size=64):
+    def train_model(self, train_images, train_labels, test_images, test_labels, epochs=13, batch_size=32):
         """Train the CNN model."""
         if self.model is None:
             self.build_model()
@@ -263,28 +264,33 @@ class CustomDigitClassifier:
 
 # Usage:
 # Initialize the classifier with dataset path
-model_name = 'colour.h5' # CHANGE!!!!!!!!!!!!!!
-dataset_path='Data/Training/Training_Images_Colour' # CHANGE!!!!!!!!!!!!!!
+model_name = 'Model_Training_TEST.h5' # CHANGE!!!!!!!!!!!!!!
+dataset_path='Data/Training/TEST' # CHANGE!!!!!!!!!!!!!!
 labelshift=False # CHANGE!!!!!!!!!!!!!!
-classifier = CustomDigitClassifier(model_name=model_name, dataset_path=dataset_path, num_classes=4, img_size=(50, 50, 3)) # CHANGE!!!!!!!!!!!!!!
+classifier = CustomDigitClassifier(model_name=model_name, dataset_path=dataset_path, num_classes=1, img_size=(100, 100, 3)) # CHANGE!!!!!!!!!!!!!!
 
 # Load dataset
 images, labels = classifier.load_custom_dataset(labelshift)
 
 # Plot the label distribution before training
-labels_numeric = np.argmax(labels, axis=1)
-plt.hist(labels_numeric, bins=np.arange(7) - 0.5, rwidth=0.8)
-plt.xticks(range(6))
-plt.xlabel('Digit Class')
-plt.ylabel('Frequency')
-plt.show()
+def showLabelMetric():
+    labels_numeric = np.argmax(labels, axis=1)
+    plt.hist(labels_numeric, bins=np.arange(7) - 0.5, rwidth=0.8)
+    plt.xticks(range(7))
+    plt.xlabel('Digit Class')
+    plt.ylabel('Frequency')
+    plt.show()
 
 classifier.visualize_samples_paginated(images, labels, labelshift)
+# showLabelMetric()
+
 
 # Split the data into training and testing sets
+print("Splitting dataset into training and testing set...")
 train_images, test_images, train_labels, test_labels = train_test_split(images, labels, test_size=0.2, random_state=42)
 
 # Train the model
+print("Training the model...")
 classifier.train_model(train_images, train_labels, test_images, test_labels)
 
 # Evaluate the model on test data

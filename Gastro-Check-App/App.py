@@ -17,7 +17,7 @@ from sksurgerynditracker.nditracker import NDITracker
 
 
 class RealTimeDigitRecognition:
-    def __init__(self, model, image_size, downscale_factor=0.5):
+    def __init__(self, model, image_size, labelshift, downscale_factor=0.5):
         """
         Initializes the RealTimeDigitRecognition object for recognizing digits in video frames.
 
@@ -43,6 +43,7 @@ class RealTimeDigitRecognition:
         self.seen_digits = set()  # Use set for faster lookups
         self.frame_count = 0
         self.update_digits = False
+        self.labelshift = labelshift
 
     def preprocess_frame(self, frame):
         """Resizes and converts the frame to grayscale for model prediction."""
@@ -54,7 +55,9 @@ class RealTimeDigitRecognition:
         
         #cv2.imshow('Grayscale Frame', gray_frame)
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        bgr_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+        # bgr_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) # USE THIS TO SHOW THE FRAME WITH CORRECT COLOUR
+        # cv2.imshow('NORMAL', bgr_frame)
 
         resized_frame = cv2.resize(rgb_frame, (self.image_size[0], self.image_size[1]))
         # cv2.imshow('BLUE', resized_frame)
@@ -82,7 +85,10 @@ class RealTimeDigitRecognition:
         predicted_class = np.argmax(predictions)
         if max_prediction < 0.85:
             return -1
-        return (predicted_class) #)-1)    #CHANGE!!!!
+        if self.labelshift:
+            (predicted_class -1) #Label shift so return original prediction - 1!!!!
+        else:
+            (predicted_class) #No Label shift so return original prediction!!!!
 
     def process_frame(self, frame):
         """Processes a single frame and updates the seen digits list if required."""
@@ -191,7 +197,7 @@ class VideoFeed:
 
 
 class Application:
-    def __init__(self, root, model, tracker, image_size):
+    def __init__(self, root, model, tracker, image_size, labelshift):
         """
         Initializes the application by setting up the main window and configuring necessary components.
 
@@ -233,8 +239,9 @@ class Application:
         self.root.title("Gastro-Check")
         self.root.configure(bg="LightSkyBlue1")
         self.image_size = image_size
+        self.labelshift = labelshift
 
-        self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size)
+        self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size, labelshift=labelshift)
         self.setup_ui()
 
         self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.array_data_label, self.digit_show_label)
@@ -962,10 +969,8 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    # model_dir = 'Data/models'
-    # model_name = 'Digit_Classifier_Gastro_200x200_Images_with_-1_15_epoch.h5' # WITH SUDOSCAN AND MNIST CHANGE PREDICTION -1 to PREDICTION!
-    # model_path = os.path.join(model_dir, model_name)
     model = load_model('Data/models/Model_Training_Images_Colour.h5')  # Replace with your model file
+    labelshift = False # Change to True if a labelshift of (+1) is used in the training data (if the training data contains a -1 class)
 
     # Set up the tracker
     settings_aurora = {
@@ -977,6 +982,6 @@ if __name__ == "__main__":
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model, tracker, image_size=(150, 150, 3))
+    app = Application(root, model, tracker, image_size=(150, 150, 3), labelshift=labelshift)
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

@@ -70,7 +70,7 @@ class RealTimeDigitRecognition:
 
     def predict_digit(self, processed_frame):
         # Convert the processed_frame back to a displayable format for OpenCV
-        display_frame = (processed_frame[0] * 255).astype(np.uint8)  # Remove batch dimension and scale back to 0-255
+        #display_frame = (processed_frame[0] * 255).astype(np.uint8)  # Remove batch dimension and scale back to 0-255
 
         """Runs the model prediction and returns the predicted class."""
         predictions = self.model.predict(processed_frame)
@@ -86,9 +86,9 @@ class RealTimeDigitRecognition:
         if max_prediction < 0.85:
             return -1
         if self.labelshift:
-            return (predicted_class -1) #Label shift so return original prediction - 1!!!!
+            return (predicted_class -1) #Label shift so return original prediction - 1!
         else:
-            return (predicted_class) #No Label shift so return original prediction!!!!
+            return (predicted_class) #No Label shift so return original prediction!
 
     def process_frame(self, frame):
         """Processes a single frame and updates the seen digits list if required."""
@@ -112,7 +112,7 @@ class RealTimeDigitRecognition:
 
 
 class VideoFeed:
-    def __init__(self, window, video_frame, digit_recognizer, array_data_label, digit_show_label):
+    def __init__(self, window, video_frame, digit_recognizer, array_data_label, digit_show_label, gi_label):
         """
         Initializes the VideoFeed object for capturing and displaying video frames.
 
@@ -129,6 +129,7 @@ class VideoFeed:
         """
         self.window = window
         self.video_frame = video_frame
+        self.gi_label = gi_label
         self.cap = cv2.VideoCapture(0) #1 FOR VIDEO CAPTURE
         self.running = True
         self.digit_recognizer = digit_recognizer
@@ -185,6 +186,42 @@ class VideoFeed:
         """Updates the label that displays the seen digits."""
         seen_digits_text = ", ".join(map(str, self.digit_recognizer.seen_digits))
         self.array_data_label.config(text=seen_digits_text)
+        
+        # CHANGE IMAGE
+        image_folder = "GI-Tract-Images/"
+        
+        # Initialize the background with the default image
+        background = Image.open(os.path.join(image_folder, "0.png")).convert("RGBA")
+        
+        if seen_digits_text != "":
+            numbers_list = sorted([int(num.strip()) for num in seen_digits_text.split(',')])
+            
+            # Check if exactly 4 digits are recognized
+            if len(numbers_list) == 4:
+                image_name = "SeenFULL.png"
+                background = Image.open(os.path.join(image_folder, image_name)).convert("RGBA")
+            else:
+                # Loop through recognized digits and overlay images
+                for n in numbers_list:
+                    image_path = os.path.join(image_folder, f"{n}.png")
+                    overlay = Image.open(image_path).convert("RGBA")
+
+                    # Resize overlay image to match background if necessary
+                    overlay = overlay.resize(background.size)
+
+                    # Set the transparency level (0 - fully transparent, 255 - fully opaque)
+                    overlay.putalpha(128)  # For 50% transparency
+
+                    # Stack the images on top of each other
+                    background = Image.alpha_composite(background, overlay)
+
+        # Resize and update the label with the new image
+        self.gi_image = background.resize((400, 600), Image.Resampling.LANCZOS)
+        gi_image_tk = ImageTk.PhotoImage(self.gi_image)
+        
+        # Keep a reference to avoid garbage collection
+        self.gi_image.imgtk = gi_image_tk
+        self.gi_label.config(image=gi_image_tk)
 
     def update_detecting_digits_display(self, predicted_class):
         """Updates the label that displays the seen digits."""
@@ -244,7 +281,7 @@ class Application:
         self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size, labelshift=labelshift)
         self.setup_ui()
 
-        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.array_data_label, self.digit_show_label)
+        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.array_data_label, self.digit_show_label, self.gi_label)
         self.start_time = None
         self.running_timer = False
         self.is_procedure_running = False
@@ -480,56 +517,17 @@ class Application:
         """
         Creates and configures a frame to display a graphical image in the user interface.
 
-        This method performs the following actions:
-
-        1. **Creates a Frame**:
-        - Initializes a new `Frame` widget named `self.gi_frame` with a light sky blue background color (`bg="LightSkyBlue1"`).
-        - Places the frame in the grid layout at row 0, column 2, with padding of 5 pixels on all sides (`padx=5, pady=5`).
-
-        2. **Loads and Resizes an Image**:
-        - Opens an image file named "gi_tract_model.png" using `Image.open()`.
-        - Resizes the image to 400 pixels in width and 600 pixels in height using `Image.resize()`, with LANCZOS resampling for high-quality resizing.
-
-        3. **Converts the Image to a Tkinter-Compatible Format**:
-        - Converts the resized image to a `PhotoImage` object using `ImageTk.PhotoImage()`, which is compatible with Tkinter for display purposes.
-
-        4. **Creates and Configures a Label**:
-        - Initializes a `Label` widget named `self.gi_label` to display the image. Sets the label's image to the Tkinter-compatible image object (`self.gi_image_tk`).
-        - Packs the label into the `self.gi_frame` using `pack()`, which places the label in the frame with default settings.
-
-        This method sets up a visual element within the user interface, specifically designed to display a graphical image.
-
-        Returns:
-        - **None**: This method configures the user interface frame and label but does not return any values.
-
         Example:
         - After calling this method, a frame with a light sky blue background containing a resized image will be displayed in the Tkinter window.
         """
         self.gi_frame = Frame(self.root, bg="LightSkyBlue1")
         self.gi_frame.grid(row=0, column=2, padx=5, pady=5)
 
-        self.gi_image = Image.open("gi_tract_model.png").resize((400, 600), Image.Resampling.LANCZOS)
+        self.gi_image = Image.open("GI-Tract-Images/Seen.png").resize((400, 600), Image.Resampling.LANCZOS)
         self.gi_image_tk = ImageTk.PhotoImage(self.gi_image)
 
         self.gi_label = Label(self.gi_frame, image=self.gi_image_tk)
         self.gi_label.pack()
-
-        # STL SHOW BUT LOOOOOOTSSS OF COMP POWER, DOES NOT WORK
-        # reader = vtk.vtkSTLReader()
-        # reader.SetFileName("Stomach and Esophagus_STL.stl")
-        # mapper = vtk.vtkPolyDataMapper()
-        # mapper.SetInputConnection(reader.GetOutputPort())
-        # actor = vtk.vtkActor()
-        # actor.SetMapper(mapper)
-        # renderer = vtk.vtkRenderer()
-        # renderWindow = vtk.vtkRenderWindow()
-        # renderWindow.AddRenderer(renderer)
-        # renderWindowInteractor = vtk.vtkRenderWindowInteractor()
-        # renderWindowInteractor.SetRenderWindow(renderWindow)
-        # renderer.AddActor(actor)
-        # renderer.SetBackground(1, 1, 1) # Background color
-        # renderWindow.Render()
-        # renderWindowInteractor.Start()x
 
     def update_tracked_data(self):
         """
@@ -972,7 +970,7 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    model = load_model('Data/models/colour50x50.h5')  # Replace with your model file
+    model = load_model('Data/models/Model_Training_Images_Colour_ImageSize(100, 100, 3).h5')  # Replace with your model file
     labelshift = False # Change to True if a labelshift of (+1) is used in the training data (if the training data contains a -1 class)
 
     # Set up the tracker
@@ -985,6 +983,6 @@ if __name__ == "__main__":
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model, tracker, image_size=(50, 50, 3), labelshift=labelshift) # Replace with your image size of file
+    app = Application(root, model, tracker, image_size=(100, 100, 3), labelshift=labelshift) # Replace with your image size of file
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

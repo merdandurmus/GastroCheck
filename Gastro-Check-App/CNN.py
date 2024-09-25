@@ -264,10 +264,14 @@ class CustomDigitClassifier:
 
 # Usage:
 # Initialize the classifier with dataset path
-model_name = 'Model_Training_TEST.h5' # CHANGE!!!!!!!!!!!!!!
-dataset_path='Data/Training/TEST' # CHANGE!!!!!!!!!!!!!!
+img_size=(100, 100, 3)
+model_name = f'Model_Training_Images_Colour_ImageSize{img_size}.h5' # CHANGE!!!!!!!!!!!!!!
+dataset_path='Data/Training/Training_Images_Colour' # CHANGE!!!!!!!!!!!!!!
 labelshift=False # CHANGE!!!!!!!!!!!!!!
-classifier = CustomDigitClassifier(model_name=model_name, dataset_path=dataset_path, num_classes=1, img_size=(100, 100, 3)) # CHANGE!!!!!!!!!!!!!!
+num_classes=4
+
+
+classifier = CustomDigitClassifier(model_name=model_name, dataset_path=dataset_path, img_size=img_size, num_classes=num_classes) # CHANGE!!!!!!!!!!!!!!
 
 # Load dataset
 images, labels = classifier.load_custom_dataset(labelshift)
@@ -281,7 +285,8 @@ def showLabelMetric():
     plt.ylabel('Frequency')
     plt.show()
 
-classifier.visualize_samples_paginated(images, labels, labelshift)
+# SHOWS IMAGES SUBSET AND IMAGE METICS ABOUT NUMBERS: DEBUG PURPOSES
+# classifier.visualize_samples_paginated(images, labels, labelshift)
 # showLabelMetric()
 
 

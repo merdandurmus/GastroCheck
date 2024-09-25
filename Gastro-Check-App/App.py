@@ -75,10 +75,10 @@ class RealTimeDigitRecognition:
         """Runs the model prediction and returns the predicted class."""
         predictions = self.model.predict(processed_frame)
 
-        cv2.imshow('BLUE', display_frame)
-        bgr_frame = cv2.cvtColor(display_frame, cv2.COLOR_RGB2BGR)
-        cv2.imshow('NORMAL', bgr_frame)
-        cv2.waitKey(1)  # Small delay for display
+        # cv2.imshow('BLUE', display_frame)
+        # bgr_frame = cv2.cvtColor(display_frame, cv2.COLOR_RGB2BGR)
+        # cv2.imshow('NORMAL', bgr_frame)
+        # cv2.waitKey(1)  # Small delay for display
 
         print(predictions)
         max_prediction = np.max(predictions)
@@ -86,9 +86,9 @@ class RealTimeDigitRecognition:
         if max_prediction < 0.85:
             return -1
         if self.labelshift:
-            (predicted_class -1) #Label shift so return original prediction - 1!!!!
+            return (predicted_class -1) #Label shift so return original prediction - 1!!!!
         else:
-            (predicted_class) #No Label shift so return original prediction!!!!
+            return (predicted_class) #No Label shift so return original prediction!!!!
 
     def process_frame(self, frame):
         """Processes a single frame and updates the seen digits list if required."""
@@ -278,7 +278,10 @@ class Application:
         Example:
         - Calling this method will result in the arrangement of video display, control buttons, data metrics, and graphical images within the main application window.
         """
-        self.root.geometry("1000x700")  # Adjust the overall window size as needed
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        #self.root.geometry("1000x700")  # Adjust the overall window size as needed
+        self.root.geometry(f"{screen_width}x{screen_height}")
 
         self.create_video_frame()
         self.create_control_frame()
@@ -969,7 +972,7 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    model = load_model('Data/models/Model_Training_Images_Colour.h5')  # Replace with your model file
+    model = load_model('Data/models/colour50x50.h5')  # Replace with your model file
     labelshift = False # Change to True if a labelshift of (+1) is used in the training data (if the training data contains a -1 class)
 
     # Set up the tracker
@@ -982,6 +985,6 @@ if __name__ == "__main__":
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model, tracker, image_size=(150, 150, 3), labelshift=labelshift)
+    app = Application(root, model, tracker, image_size=(50, 50, 3), labelshift=labelshift) # Replace with your image size of file
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

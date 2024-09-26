@@ -135,7 +135,7 @@ class VideoFeed:
         self.window = window
         self.video_frame = video_frame
         self.gi_label = gi_label
-        self.cap = cv2.VideoCapture(0) #1 FOR VIDEO CAPTURE
+        self.cap = cv2.VideoCapture(1) #1 FOR VIDEO CAPTURE
         self.running = True
         self.digit_recognizer = digit_recognizer
         self.array_data_label = array_data_label
@@ -184,7 +184,23 @@ class VideoFeed:
     def update_tkinter_image(self, frame_rgb):
         """Converts a frame to Tkinter-compatible format and updates the video display."""
         img = Image.fromarray(frame_rgb)
-        imgtk = ImageTk.PhotoImage(image=img)
+        
+        width, height = img.size
+        
+        # Calculate the amount to crop from each side (1/4 of the width)
+        crop_amount = width // 9
+
+        # Define the cropping box: (left, upper, right, lower)
+        left = crop_amount
+        right = width - crop_amount
+        top = 0
+        bottom = height
+        
+        img_cropped = img.crop((left, top, right, bottom))
+        
+        
+        img_resized = img_cropped.resize((1200, 700), Image.Resampling.LANCZOS)
+        imgtk = ImageTk.PhotoImage(image=img_resized)
         self.video_frame.imgtk = imgtk
         self.video_frame.config(image=imgtk)
 
@@ -961,7 +977,8 @@ class Application:
             return 0
         meanVelocity = np.mean(self.calculateVelocity(Tvector,timeStamps))
         return meanVelocity
-   
+
+
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model

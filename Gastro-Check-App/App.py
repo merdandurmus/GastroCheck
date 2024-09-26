@@ -1,19 +1,24 @@
+# The provided class `Application` sets up a real-time digit recognition and motion tracking
+# application with a user interface in Python, utilizing a trained CNN model for digit recognition and
+# an NDITracker for motion tracking.
 import os
-import math
 import csv
 import time
 import threading
+import math
 from datetime import datetime
-from tkinter import messagebox
 
 import cv2
 import numpy as np
 from PIL import Image, ImageTk
+
 import tkinter as tk
-from tkinter import Label, Frame, Button
+from tkinter import Frame, messagebox
+from tkinter import ttk
 
 from tensorflow.keras.models import load_model # type: ignore
 from sksurgerynditracker.nditracker import NDITracker
+
 
 
 class RealTimeDigitRecognition:
@@ -112,7 +117,7 @@ class RealTimeDigitRecognition:
 
 
 class VideoFeed:
-    def __init__(self, window, video_frame, digit_recognizer, array_data_label, digit_show_label, gi_label):
+    def __init__(self, window, video_frame, digit_recognizer, array_data_label, digit_show_label, gi_label, num_classes):
         """
         Initializes the VideoFeed object for capturing and displaying video frames.
 
@@ -137,6 +142,7 @@ class VideoFeed:
         self.digit_show_label = digit_show_label
         self.blinking_dot = False  # Control blinking red dot for display
         self.frame_update_delay = 100  # Delay in ms for video frame updates
+        self.num_classes = num_classes
 
         self.start_video_feed()
 
@@ -197,7 +203,7 @@ class VideoFeed:
             numbers_list = sorted([int(num.strip()) for num in seen_digits_text.split(',')])
             
             # Check if exactly 4 digits are recognized
-            if len(numbers_list) == 4:
+            if len(numbers_list) == self.num_classes:
                 image_name = "SeenFULL.png"
                 background = Image.open(os.path.join(image_folder, image_name)).convert("RGBA")
             else:
@@ -232,9 +238,8 @@ class VideoFeed:
         self.running = False
         self.cap.release()
 
-
 class Application:
-    def __init__(self, root, model, tracker, image_size, labelshift):
+    def __init__(self, root, model, tracker, image_size, labelshift, num_classes):
         """
         Initializes the application by setting up the main window and configuring necessary components.
 
@@ -274,14 +279,20 @@ class Application:
         """
         self.root = root
         self.root.title("Gastro-Check")
-        self.root.configure(bg="LightSkyBlue1")
+        self.style = ttk.Style()
+        self.style.theme_use("clam")  # A more modern theme
+        self.style.configure("TButton", padding=6, relief="flat", background="#4CAF50", foreground="white", font=("Arial", 12))
+        self.style.configure("TLabel", background="white", foreground="black", font=("Arial", 12))
+        self.style.configure("TFrame", background="white")
+
         self.image_size = image_size
         self.labelshift = labelshift
+        self.num_classes = num_classes
 
         self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size, labelshift=labelshift)
         self.setup_ui()
 
-        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.array_data_label, self.digit_show_label, self.gi_label)
+        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.array_data_label, self.digit_show_label, self.gi_label, self.num_classes)
         self.start_time = None
         self.running_timer = False
         self.is_procedure_running = False
@@ -317,7 +328,6 @@ class Application:
         """
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        #self.root.geometry("1000x700")  # Adjust the overall window size as needed
         self.root.geometry(f"{screen_width}x{screen_height}")
 
         self.create_video_frame()
@@ -325,7 +335,6 @@ class Application:
         self.create_array_frame()
         self.create_gi_frame()
 
-        # Adjust row and column configurations for better layout management
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
 
@@ -335,16 +344,13 @@ class Application:
         
         This method ensures the video frame has a fixed size so that it does not take up excessive space.
         """
-        # Set a fixed size for the video frame to prevent it from occupying too much space
-        frame_width = 400  # You can adjust the width
-        frame_height = 300  # You can adjust the height
+        # Create a frame to hold the video label
+        self.video_frame_container = Frame(self.root, width=400, height=300)
+        self.video_frame_container.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
         
-        self.video_frame = Label(self.root, width=frame_width, height=frame_height)
-        self.video_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
-
-        # Ensure the video frame has fixed proportions and does not resize excessively
-        self.root.grid_rowconfigure(0, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
+        # Use the ttk.Label for the video frame (no width and height options here)
+        self.video_frame = ttk.Label(self.video_frame_container)
+        self.video_frame.pack(fill="both", expand=True)
 
     def create_control_frame(self):
         """
@@ -382,16 +388,16 @@ class Application:
         Example:
         - After calling this method, `self.control_frame` will contain a "Start Procedure" button, a timer label displaying "Time: 0:00", and a hidden "Start Again" button.
         """
-        self.control_frame = Frame(self.root, bg="LightSkyBlue1")
+        self.control_frame = ttk.Frame(self.root)
         self.control_frame.grid(row=1, column=0, padx=10, pady=10)
 
-        self.start_button = Button(self.control_frame, text="Start Procedure", command=self.start_procedure, bg="LightSkyBlue1")
+        self.start_button = ttk.Button(self.control_frame, text="Start Procedure", command=self.start_procedure)
         self.start_button.pack()
 
-        self.timer_label = Label(self.control_frame, text="Time: 0:00", font=("Arial", 16), bg="LightSkyBlue1")
+        self.timer_label = ttk.Label(self.control_frame, text="Time: 0:00", font=("Arial", 16))
         self.timer_label.pack()
 
-        self.start_again_button = Button(self.control_frame, text="Start Again", command=self.start_again, bg="LightSkyBlue1")
+        self.start_again_button = ttk.Button(self.control_frame, text="Start Again", command=self.start_again)
         self.start_again_button.pack_forget()
 
     def create_array_frame(self):
@@ -427,21 +433,35 @@ class Application:
         Example:
         - After calling this method, `self.array_frame` will contain a title label for "Digits Seen", an empty data label for displaying additional information, and labels for various tracked metrics.
         """
-        self.array_frame = Frame(self.root, bg="LightSkyBlue1")
-        self.array_frame.grid(row=1, column=1, padx=10, pady=10)
+        self.array_frame = ttk.Frame(self.root)
+        self.array_frame.grid(row=1, column=1, padx=10, pady=15, sticky="nsew")
 
-        self.digit_label = Label(self.array_frame, text="Detecting", font=("Arial", 14), bg="LightSkyBlue1")
+        # Create two frames: one for "Digits Seen" and one for tracked data
+        self.digits_frame = ttk.Frame(self.array_frame)
+        self.digits_frame.grid(row=0, column=0, padx=10, pady=15, sticky="n")
+
+        self.tracked_data_frame = ttk.Frame(self.array_frame)
+        self.tracked_data_frame.grid(row=0, column=1, padx=40, pady=10, sticky="n")
+
+        # Styles
+        self.style.configure("Blue.TLabel", foreground="blue", font=("Arial", 14))
+        self.style.configure("Green.TLabel", foreground="green", font=("Arial", 14))
+
+
+        # Adding digits information in the digits_frame
+        self.digit_label = ttk.Label(self.digits_frame, text="Area", style="Blue.TLabel")
         self.digit_label.pack()
 
-        self.digit_show_label = Label(self.array_frame, text="", font=("Arial", 12), bg="LightSkyBlue1")
+        self.digit_show_label = ttk.Label(self.digits_frame, text="", style="Blue.TLabel")
         self.digit_show_label.pack()
 
-        self.array_label = Label(self.array_frame, text="Digits Seen", font=("Arial", 14), bg="LightSkyBlue1")
+        self.array_label = ttk.Label(self.digits_frame, text="Gastric Area's Seen", style="Green.TLabel")
         self.array_label.pack()
 
-        self.array_data_label = Label(self.array_frame, text="", font=("Arial", 12), bg="LightSkyBlue1")
+        self.array_data_label = ttk.Label(self.digits_frame, text="", style="Green.TLabel")
         self.array_data_label.pack()
 
+        # Creating the tracked data labels in the tracked_data_frame
         self.create_tracked_data_labels()
 
     def create_tracked_data_labels(self):
@@ -472,16 +492,16 @@ class Application:
         - After calling this method, `self.labels` will contain `Label` widgets for each tracked data metric, each initialized with default text.
         """
         self.labels = {
-            'time': self.create_data_label("Time: 0 s"),
-            'path_length': self.create_data_label("Path Length: 0 m"),
-            'angular_length': self.create_data_label("Angular Length: 0 °"),
-            'response_orientation': self.create_data_label("Response Orientation: 0 °"),
-            'depth_perception': self.create_data_label("Depth Perception: 0 m"),
-            'motion_smoothness': self.create_data_label("Motion Smoothness: 0 m/s³"),
-            'average_velocity': self.create_data_label("Average Velocity: 0 mm/s")
+            'time': self.create_data_label("Time: 0 s", self.tracked_data_frame),
+            'path_length': self.create_data_label("Path Length: 0 m", self.tracked_data_frame),
+            'angular_length': self.create_data_label("Angular Length: 0 °", self.tracked_data_frame),
+            'response_orientation': self.create_data_label("Response Orientation: 0 °", self.tracked_data_frame),
+            'depth_perception': self.create_data_label("Depth Perception: 0 m", self.tracked_data_frame),
+            'motion_smoothness': self.create_data_label("Motion Smoothness: 0 m/s³", self.tracked_data_frame),
+            'average_velocity': self.create_data_label("Average Velocity: 0 mm/s", self.tracked_data_frame)
         }
 
-    def create_data_label(self, text):
+    def create_data_label(self, text, parent_frame):
         """
         Creates and configures a label to display text in the user interface.
 
@@ -509,54 +529,28 @@ class Application:
         Example:
         - Calling `create_data_label("Sample Data")` creates a label with the text "Sample Data", sets its font and background color, and returns the label widget.
         """
-        label = Label(self.array_frame, text=text, font=("Arial", 12), bg="LightSkyBlue1")
-        label.pack()
+        self.style.configure("Purple.TLabel", foreground="purple", font=("Arial", 13))
+        label = ttk.Label(parent_frame, text=text, style="Purple.TLabel")
+        label.pack(anchor="w")  # Align the labels to the left inside the parent frame
         return label
+
 
     def create_gi_frame(self):
         """
         Creates and configures a frame to display a graphical image in the user interface.
-
-        Example:
-        - After calling this method, a frame with a light sky blue background containing a resized image will be displayed in the Tkinter window.
         """
-        self.gi_frame = Frame(self.root, bg="LightSkyBlue1")
+        self.gi_frame = ttk.Frame(self.root)
         self.gi_frame.grid(row=0, column=2, padx=5, pady=5)
 
         self.gi_image = Image.open("GI-Tract-Images/Seen.png").resize((400, 600), Image.Resampling.LANCZOS)
         self.gi_image_tk = ImageTk.PhotoImage(self.gi_image)
 
-        self.gi_label = Label(self.gi_frame, image=self.gi_image_tk)
+        self.gi_label = ttk.Label(self.gi_frame, image=self.gi_image_tk)
         self.gi_label.pack()
 
     def update_tracked_data(self):
         """
         Updates the tracked motion data metrics and refreshes the corresponding labels in the user interface.
-
-        This method performs the following actions:
-
-        1. **Extracts timestamp and transformation matrix data**:
-        - If `self.Tracked_Motion_Data` is not empty, it unpacks the tracked motion data into `timestamp_array` (timestamps) and `trans_matrix` (transformation matrices).
-        - If `self.Tracked_Motion_Data` is empty, sets both to empty lists.
-        2. **Calculates metrics**: 
-        - Calls various calculation methods to compute the following metrics based on the extracted data:
-            - **time**: Total elapsed time.
-            - **path_length**: Total distance traveled.
-            - **angular_length**: Total angular displacement.
-            - **response_orientation**: Final orientation of the tracked object.
-            - **depth_perception**: Depth changes during motion.
-            - **motion_smoothness**: Smoothness of the motion, based on velocity changes over time.
-            - **average_velocity**: Average velocity of the object during the tracked motion.
-        3. **Updates labels**: 
-        - Packs the calculated metrics into a `metrics` dictionary and calls `self.update_labels(metrics)` to refresh the UI with the latest metric values.
-
-        This method ensures that the tracked motion data is processed and the user interface is updated with the latest information.
-
-        Returns:
-        - **None**: This method updates the user interface labels with the latest tracked data.
-
-        Example:
-        - If motion data is being tracked, calling this method updates the labels with the calculated values for time, path length, and other metrics.
         """
         timestamp_array, trans_matrix = zip(*self.Tracked_Motion_Data) if self.Tracked_Motion_Data else ([], [])
         metrics = {
@@ -574,7 +568,6 @@ class Application:
         """
         Resets the labels displaying tracked data metrics in the user interface to their default values.
         """
-
         metrics = {
             'time': 0,
             'path_length': 0,
@@ -620,23 +613,16 @@ class Application:
 
         This method maps specific keys (representing different measurements) to their corresponding units. It performs the following actions:
         """
-
-        if key == 'time':
-            return 's'
-        if key == 'path_length':
-            return 'm'
-        if key == 'angular_length':
-            return '°'
-        if key == 'response_orientation':
-            return '°'
-        if key == 'depth_perception':
-            return 'm'
-        if key == 'motion_smoothness':
-            return 'm/s³'
-        if key == 'average_velocity':
-            return 'mm/s'
-        else:
-            return 'NaN'
+        units = {
+            'time': 's',
+            'path_length': 'm',
+            'angular_length': '°',
+            'response_orientation': '°',
+            'depth_perception': 'm',
+            'motion_smoothness': 'm/s³',
+            'average_velocity': 'mm/s'
+        }
+        return units.get(key, 'NaN')
 
     def update_data_periodically(self):
         """
@@ -751,16 +737,22 @@ class Application:
 
         elapsed_time = time.time() - self.start_time
         minutes, _ = divmod(int(elapsed_time), 60)
-        self.timer_label.config(fg="red" if minutes < 7 else "green")
+
+        # Create or modify a style for the timer label
+        style = ttk.Style()
+        style.configure("Timer.TLabel", foreground="red" if minutes < 7 else "green")
+        self.timer_label.config(style="Timer.TLabel")
 
         tracker.stop_tracking()
+
         # Prompt the user to save the log file
         should_save = messagebox.askyesno("Save Tracked Data File", "Would you like to save the log file containing the tracked data?")
         if should_save:
             self.save_tracked_data_to_file()
-        #self.save_tracked_data_to_file()
+
         self.start_button.config(text="Procedure Stopped", state="disabled")
         self.start_again_button.pack()
+
 
     def save_tracked_data_to_file(self):
         """
@@ -826,6 +818,8 @@ class Application:
                 self.Tracked_Motion_Data.append([elapsed_time, T_sensor_rel_ref])
             time.sleep(0.025)
 
+
+
     def start_again(self):
         """
         Resets the application state to allow for a fresh start of the digit recognition procedure.
@@ -839,28 +833,29 @@ class Application:
         4. Resets tracking data: Invokes the `reset_tracked_data()` method to reset any internal tracking mechanisms.
         5. Configures the start button: Sets the `start_button` text back to "Start Procedure" and re-enables it, allowing the user to begin the process again.
         6. Hides the "Start Again" button: Calls `pack_forget()` on the `start_again_button` to remove it from the user interface.
-
-        This method is typically used when the user wants to restart the procedure from scratch, clearing all data and restoring default settings.
         """
-        self.digit_recognizer.seen_digits = set()  # Use set for faster lookups
+        self.digit_recognizer.seen_digits = set()
         self.Tracked_Motion_Data = []
         self.array_data_label.config(text="")
-        self.timer_label.config(text="Time: 0:00", fg="black")
+
+        # Use ttk.Style to configure the timer label color instead of fg
+        style = ttk.Style()
+        style.configure("Timer.TLabel", foreground="black")
+        self.timer_label.config(text="Time: 0:00", style="Timer.TLabel")
+
         self.reset_tracked_data_labels()
         self.start_button.config(text="Start Procedure", state="normal", command=self.start_procedure)
         self.start_again_button.pack_forget()
+
 
     def on_close(self):
         """
         Handles the cleanup and shutdown process when closing the application window.
 
         This method performs three main tasks:
-        1. Stops the video feed: Calls the `stop()` method on the `self.video_feed` object to terminate any ongoing video stream.
-        2. Destroys the root window: Invokes `self.root.destroy()` to close the main application window and terminate the GUI event loop.
-        3. Closes the tracker: Calls the `self.tracker.close()` method to finalize and clean up resources associated with the tracker object.
-
-        This method is typically bound to the close event of the GUI window to ensure a proper shutdown of all active resources, 
-        preventing memory leaks or unexpected behavior.
+        1. Stops the video feed:
+        2. Destroys the root window:
+        3. Closes the tracker:
         """
         self.video_feed.stop()
         self.root.destroy()
@@ -972,6 +967,7 @@ if __name__ == "__main__":
     # Load your trained CNN model
     model = load_model('Data/models/Model_Training_Images_Colour_ImageSize(100, 100, 3).h5')  # Replace with your model file
     labelshift = False # Change to True if a labelshift of (+1) is used in the training data (if the training data contains a -1 class)
+    num_classes= 4
 
     # Set up the tracker
     settings_aurora = {
@@ -983,6 +979,6 @@ if __name__ == "__main__":
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model, tracker, image_size=(100, 100, 3), labelshift=labelshift) # Replace with your image size of file
+    app = Application(root, model, tracker, image_size=(100, 100, 3), labelshift=labelshift, num_classes=num_classes) # Replace with your image size of file
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

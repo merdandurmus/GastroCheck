@@ -286,7 +286,7 @@ if __name__ == "__main__":
     # Initialize the classifier with dataset path
     img_size=(100, 100, 3)
     model_name = f'{args.modelname}_{img_size}.h5' # CHANGE!!!!!!!!!!!!!!
-    dataset_path=args.trainingdata # CHANGE!!!!!!!!!!!!!!
+    dataset_path=args.trainingdir # CHANGE!!!!!!!!!!!!!!
     labelshift=False # CHANGE!!!!!!!!!!!!!!
     num_classes=4
 

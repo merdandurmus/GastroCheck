@@ -262,41 +262,47 @@ class CustomDigitClassifier:
         print(f"Test accuracy: {test_acc:.4f}")
         return test_acc
 
-# Usage:
-# Initialize the classifier with dataset path
-img_size=(100, 100, 3)
-model_name = f'Model_Training_Images_Colour_ImageSize{img_size}.h5' # CHANGE!!!!!!!!!!!!!!
-dataset_path='Data/Training/Training_Images_Colour' # CHANGE!!!!!!!!!!!!!!
-labelshift=False # CHANGE!!!!!!!!!!!!!!
-num_classes=4
+
+if __name__ == "__main__":
+    # Define GPU visible devices (env var)
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2" # String value = 0, 1, 2
+    
+    # Usage:
+    # Initialize the classifier with dataset path
+    img_size=(100, 100, 3)
+    model_name = f'Model_Training_Images_Colour_ImageSize{img_size}.h5' # CHANGE!!!!!!!!!!!!!!
+    dataset_path='Data/Training/Training_Images_Colour' # CHANGE!!!!!!!!!!!!!!
+    labelshift=False # CHANGE!!!!!!!!!!!!!!
+    num_classes=4
 
 
-classifier = CustomDigitClassifier(model_name=model_name, dataset_path=dataset_path, img_size=img_size, num_classes=num_classes) # CHANGE!!!!!!!!!!!!!!
+    classifier = CustomDigitClassifier(model_name=model_name, dataset_path=dataset_path, img_size=img_size, num_classes=num_classes) # CHANGE!!!!!!!!!!!!!!
 
-# Load dataset
-images, labels = classifier.load_custom_dataset(labelshift)
+    # Load dataset
+    images, labels = classifier.load_custom_dataset(labelshift)
 
-# Plot the label distribution before training
-def showLabelMetric():
-    labels_numeric = np.argmax(labels, axis=1)
-    plt.hist(labels_numeric, bins=np.arange(7) - 0.5, rwidth=0.8)
-    plt.xticks(range(7))
-    plt.xlabel('Digit Class')
-    plt.ylabel('Frequency')
-    plt.show()
+    # Plot the label distribution before training
+    def showLabelMetric():
+        labels_numeric = np.argmax(labels, axis=1)
+        plt.hist(labels_numeric, bins=np.arange(7) - 0.5, rwidth=0.8)
+        plt.xticks(range(7))
+        plt.xlabel('Digit Class')
+        plt.ylabel('Frequency')
+        plt.show()
 
-# SHOWS IMAGES SUBSET AND IMAGE METICS ABOUT NUMBERS: DEBUG PURPOSES
-# classifier.visualize_samples_paginated(images, labels, labelshift)
-# showLabelMetric()
+    # SHOWS IMAGES SUBSET AND IMAGE METICS ABOUT NUMBERS: DEBUG PURPOSES
+    # classifier.visualize_samples_paginated(images, labels, labelshift)
+    # showLabelMetric()
 
 
-# Split the data into training and testing sets
-print("Splitting dataset into training and testing set...")
-train_images, test_images, train_labels, test_labels = train_test_split(images, labels, test_size=0.2, random_state=42)
+    # Split the data into training and testing sets
+    print("Splitting dataset into training and testing set...")
+    train_images, test_images, train_labels, test_labels = train_test_split(images, labels, test_size=0.2, random_state=42)
 
-# Train the model
-print("Training the model...")
-classifier.train_model(train_images, train_labels, test_images, test_labels)
+    # Train the model
+    print("Training the model...")
+    classifier.train_model(train_images, train_labels, test_images, test_labels)
 
-# Evaluate the model on test data
-classifier.evaluate_model(test_images, test_labels)
+    # Evaluate the model on test data
+    classifier.evaluate_model(test_images, test_labels)

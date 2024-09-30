@@ -13,6 +13,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from tensorflow.keras.callbacks import EarlyStopping # type: ignore
 
+from argparse import ArgumentParser
+
 class ConfusionMatrixCallback(tf.keras.callbacks.Callback):
     def __init__(self, validation_data, model_name, output_dir='Data/confusion_matrices'):
         self.validation_data = validation_data
@@ -264,15 +266,27 @@ class CustomDigitClassifier:
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--outputdir", "-o", help="Output directory", default="output/")
+    parser.add_argument("--trainingdir", "-t", help="Location of training data", default="Data/Training/Training_Images_Colour")
+    parser.add_argument("--modelname", "-m", help="Model name", default="Model_Training_Images_Colour")
+    parser.add_argument("--gpunumber", "-g", help="Model name", default="0")
+    args = parser.parse_args()
+    
     # Define GPU visible devices (env var)
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2" # String value = 0, 1, 2
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpunumber # String value = 0, 1, 2
+    
+    assert os.path.exists(args.trainingdir), "Training directory not found!"
+    
+    if not os.path.exists(args.outputdir):
+        os.makedirs(args.outputdir, exist_ok=True)
     
     # Usage:
     # Initialize the classifier with dataset path
     img_size=(100, 100, 3)
-    model_name = f'Model_Training_Images_Colour_ImageSize{img_size}.h5' # CHANGE!!!!!!!!!!!!!!
-    dataset_path='Data/Training/Training_Images_Colour' # CHANGE!!!!!!!!!!!!!!
+    model_name = f'{args.modelname}_{img_size}.h5' # CHANGE!!!!!!!!!!!!!!
+    dataset_path=args.trainingdata # CHANGE!!!!!!!!!!!!!!
     labelshift=False # CHANGE!!!!!!!!!!!!!!
     num_classes=4
 

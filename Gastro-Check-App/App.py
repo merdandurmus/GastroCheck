@@ -135,7 +135,7 @@ class VideoFeed:
         self.window = window
         self.video_frame = video_frame
         self.gi_label = gi_label
-        self.cap = cv2.VideoCapture(1) #1 FOR VIDEO CAPTURE
+        self.cap = cv2.VideoCapture(0) #1 FOR VIDEO CAPTURE
         self.running = True
         self.digit_recognizer = digit_recognizer
         self.array_data_label = array_data_label
@@ -858,10 +858,20 @@ class Application:
         style = ttk.Style()
         style.configure("Timer.TLabel", foreground="black")
         self.timer_label.config(text="Time: 0:00", style="Timer.TLabel")
+        
+        self.gi_image = Image.open("GI-Tract-Images/Seen.png").resize((400, 600), Image.Resampling.LANCZOS)
+        self.gi_image_tk = ImageTk.PhotoImage(self.gi_image)
+        
+        # Keep a reference to avoid garbage collection
+        self.gi_image.imgtk = self.gi_image_tk
+        self.gi_label.config(image=self.gi_image_tk)
+        
 
         self.reset_tracked_data_labels()
         self.start_button.config(text="Start Procedure", state="normal", command=self.start_procedure)
         self.start_again_button.pack_forget()
+        
+        
 
 
     def on_close(self):
@@ -989,7 +999,7 @@ if __name__ == "__main__":
     # Set up the tracker
     settings_aurora = {
         "tracker type": "aurora",
-        "serial port": 4, # Specify port 4 explicitly
+        "serial port": 3, # Specify port 4 explicitly
         "verbose": True,
     }
     tracker = NDITracker(settings_aurora)

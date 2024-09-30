@@ -2,8 +2,8 @@ import cv2
 import os
 
 # Paths
-video_folder = 'Video'
-output_folder = 'Training_Images'
+video_folder = 'Data/vid_colour'
+output_folder = 'Data/Training/Training_Images_Colour'
 
 # Ensure the output folder exists
 if not os.path.exists(output_folder):

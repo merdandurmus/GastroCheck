@@ -1,123 +1,154 @@
 import os
 import tensorflow as tf
+import numpy as np
+import random
 from tensorflow.keras import layers, models, regularizers # type: ignore
 from tensorflow.keras.preprocessing.image import ImageDataGenerator # type: ignore
-from tensorflow.keras.callbacks import EarlyStopping # type: ignore
-
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard # type: ignore
+from tensorflow.keras.layers import BatchNormalization # type: ignore
 from argparse import ArgumentParser
 
-if __name__ == "__main__":
+# Constants
+DEFAULT_IMG_SIZE = "200x200"
+DEFAULT_BATCH_SIZE = 32
+DEFAULT_EPOCHS = 50
+DEFAULT_LR = 1e-4
+DEFAULT_VALID_SPLIT = 0.2
+
+def parse_arguments():
     parser = ArgumentParser()
-    parser.add_argument("--imagesize", "-i", help="Image Size", default="200x200")
+    parser.add_argument("--imagesize", "-i", help="Image Size", default=DEFAULT_IMG_SIZE)
     parser.add_argument("--trainingdir", "-t", help="Location of training data", default="Data/Training/Training_Images_Colour")
     parser.add_argument("--modelname", "-m", help="Model name", default="Model_Training_Images_Colour")
-    parser.add_argument("--gpunumber", "-g", help="Model name", default="0")
+    parser.add_argument("--gpunumber", "-g", help="GPU number", default="0")
+    parser.add_argument("--batchsize", "-b", help="Batch size", default=DEFAULT_BATCH_SIZE, type=int)
+    parser.add_argument("--epochs", "-e", help="Number of epochs", default=DEFAULT_EPOCHS, type=int)
+    parser.add_argument("--learningrate", "-lr", help="Learning rate", default=DEFAULT_LR, type=float)
     args = parser.parse_args()
-    
-    # Define GPU visible devices (env var)
+    return args
+
+def configure_gpu(gpu_number):
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpunumber # String value = 0, 1, 2
-    
-    sizes = args.imagesize.split("x")
-    
-    # Usage:
-    # Initialize the classifier with dataset path
-    img_size=(int(sizes[0]), int(sizes[1]), 3)
-    model_name = f'{args.modelname}_{args.imagesize}.h5'
-    dataset_path=args.trainingdir
-    labelshift=False # CHANGE!!!!!!!!!!!!!!
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_number
 
+def set_random_seeds(seed_value=42):
+    np.random.seed(seed_value)
+    random.seed(seed_value)
+    tf.random.set_seed(seed_value)
 
-    # Create a data generator with a validation split (e.g., 20% for validation)
-    datagen = ImageDataGenerator(
-        rescale=1./255,          # Normalize the images
-        validation_split=0.2,     # Use 20% of the data for validation
-        horizontal_flip=False,
-        fill_mode='nearest',
+def get_data_generators(img_size, dataset_path, batch_size):
+    # Data augmentation for training
+    train_datagen = ImageDataGenerator(
+        rescale=1./255,
+        validation_split=0.2,
         rotation_range=20,
         width_shift_range=0.2,
         height_shift_range=0.2,
         shear_range=0.2,
-        zoom_range=0.2
+        zoom_range=0.2,
+        horizontal_flip=False,
+        fill_mode='nearest'
     )
-
-    # Training data generator (80% of the data)
-    train_generator = datagen.flow_from_directory(
-        dataset_path,       # Main dataset directory
+    # No augmentation for validation
+    val_datagen = ImageDataGenerator(
+        rescale=1./255,
+        validation_split=0.2
+    )
+    train_generator = train_datagen.flow_from_directory(
+        dataset_path,
         target_size=(img_size[0], img_size[1]),
-        batch_size=32,
+        batch_size=batch_size,
         class_mode='categorical',
-        subset='training'        # Specify this is the training subset
+        subset='training'
     )
-
-    # Validation data generator (20% of the data)
-    validation_generator = datagen.flow_from_directory(
-        dataset_path,       # Main dataset directory
+    validation_generator = val_datagen.flow_from_directory(
+        dataset_path,
         target_size=(img_size[0], img_size[1]),
-        batch_size=32,
+        batch_size=batch_size,
         class_mode='categorical',
-        subset='validation'      # Specify this is the validation subset
+        subset='validation'
     )
-    
-    # Dynamically set the number of classes based on the training data
     num_classes = train_generator.num_classes
     print(f"Number of classes detected: {num_classes}")
-    
-    print(f"Building model: ...")
+    return train_generator, validation_generator, num_classes
+
+def build_model(img_size, num_classes):
     model = models.Sequential()
     # First convolutional block
-    model.add(layers.Conv2D(32, (3, 3), activation='relu',
-                            kernel_regularizer=regularizers.l2(0.001),
-                            input_shape=(img_size[0], img_size[1], 3)))
+    model.add(layers.Conv2D(32, (3, 3), kernel_regularizer=regularizers.l2(0.001), input_shape=(img_size[0], img_size[1], 3)))
+    model.add(BatchNormalization())
+    model.add(layers.Activation('relu'))
     model.add(layers.MaxPooling2D((2, 2)))
     model.add(layers.Dropout(0.25))
-
     # Second convolutional block
-    model.add(layers.Conv2D(128, (3, 3), activation='relu',
-                            kernel_regularizer=regularizers.l2(0.001)))
+    model.add(layers.Conv2D(128, (3, 3), kernel_regularizer=regularizers.l2(0.001)))
+    model.add(BatchNormalization())
+    model.add(layers.Activation('relu'))
     model.add(layers.MaxPooling2D((2, 2)))
     model.add(layers.Dropout(0.25))
-
     # Third convolutional block
-    model.add(layers.Conv2D(256, (3, 3), activation='relu',
-                            kernel_regularizer=regularizers.l2(0.001)))
+    model.add(layers.Conv2D(256, (3, 3), kernel_regularizer=regularizers.l2(0.001)))
+    model.add(BatchNormalization())
+    model.add(layers.Activation('relu'))
     model.add(layers.MaxPooling2D((2, 2)))
     model.add(layers.Dropout(0.25))
-
     # Flatten and dense layers
     model.add(layers.Flatten())
-    model.add(layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.001)))
+    model.add(layers.Dense(128, kernel_regularizer=regularizers.l2(0.001)))
+    model.add(BatchNormalization())
+    model.add(layers.Activation('relu'))
     model.add(layers.Dropout(0.5))
-
     model.add(layers.Dense(num_classes, activation='softmax'))
+    return model
 
-    # Compile the model
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-                loss='categorical_crossentropy', metrics=['accuracy'])
-    
-    print(f"Model built!")
-    
-    
-
-    early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-
-
-    # Fit the model using the generators
-    model.fit(
+def train_model(model, train_generator, validation_generator, epochs, steps_per_epoch, validation_steps, callbacks):
+    history = model.fit(
         train_generator,
-        epochs=50,
-        steps_per_epoch=train_generator.samples // train_generator.batch_size,
+        epochs=epochs,
+        steps_per_epoch=steps_per_epoch,
         validation_data=validation_generator,
-        validation_steps=validation_generator.samples // validation_generator.batch_size,
-        callbacks=[early_stopping]
+        validation_steps=validation_steps,
+        callbacks=callbacks
     )
+    return history
 
-    # After training, evaluate the model using the test data ! ADD SEPARATE TEST SET
-    # test_loss, test_acc = model.evaluate(test_generator, steps=test_generator.samples // test_generator.batch_size)
-    # print(f'Test accuracy: {test_acc}')
-
-    """Save the CNN model."""
-    model_dir = 'Data/models'
+def save_model(model, model_dir, model_name):
     os.makedirs(model_dir, exist_ok=True)
     model.save(os.path.join(model_dir, model_name))
     print(f"Model saved to {os.path.join(model_dir, model_name)}")
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    configure_gpu(args.gpunumber)
+    set_random_seeds()
+    sizes = args.imagesize.split("x")
+    img_size = (int(sizes[0]), int(sizes[1]), 3)
+    model_name = f'{args.modelname}_{args.imagesize}.h5'
+    dataset_path = args.trainingdir
+    batch_size = args.batchsize
+    epochs = args.epochs
+    learning_rate = args.learningrate
+    if not os.path.isdir(dataset_path):
+        raise FileNotFoundError(f"The dataset directory {dataset_path} does not exist.")
+    train_generator, validation_generator, num_classes = get_data_generators(img_size, dataset_path, batch_size)
+    model = build_model(img_size, num_classes)
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+        loss='categorical_crossentropy',
+        metrics=['accuracy']
+    )
+    early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-7, verbose=1)
+    model_dir = 'Data/models'
+    checkpoint = ModelCheckpoint(
+        filepath=os.path.join(model_dir, 'best_model.h5'),
+        monitor='val_accuracy',
+        save_best_only=True,
+        verbose=1
+    )
+    tensorboard = TensorBoard(log_dir='logs')
+    callbacks = [early_stopping, reduce_lr, checkpoint, tensorboard]
+    steps_per_epoch = train_generator.samples // batch_size
+    validation_steps = validation_generator.samples // batch_size
+    history = train_model(model, train_generator, validation_generator, epochs, steps_per_epoch, validation_steps, callbacks)
+    save_model(model, model_dir, model_name)

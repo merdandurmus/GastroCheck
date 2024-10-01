@@ -149,17 +149,17 @@ if __name__ == "__main__":
         loss='categorical_crossentropy',
         metrics=['accuracy']
     )
-    early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-7, verbose=1)
+    early_stopping = EarlyStopping(monitor='loss', patience=10, restore_best_weights=True)
+    reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=1e-7, verbose=1)
     model_dir = 'Data/models'
     checkpoint = ModelCheckpoint(
         filepath=os.path.join(model_dir, model_name),
-        monitor='val_accuracy',
+        monitor='accuracy',
         save_best_only=True,
         verbose=1
     )
-    tensorboard = TensorBoard(log_dir='logs')
-    callbacks = [early_stopping, reduce_lr, checkpoint, tensorboard]
+    #tensorboard = TensorBoard(log_dir='logs')
+    callbacks = [early_stopping, reduce_lr, checkpoint]# , tensorboard]
     steps_per_epoch = train_generator.samples // batch_size
     validation_steps = validation_generator.samples // batch_size
     history = train_model(model, train_generator, validation_generator, epochs, steps_per_epoch, validation_steps, callbacks)

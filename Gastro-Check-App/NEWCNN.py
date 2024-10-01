@@ -1,3 +1,4 @@
+import logging
 import os
 import tensorflow as tf
 import numpy as np
@@ -9,11 +10,15 @@ from tensorflow.keras.layers import BatchNormalization # type: ignore
 from argparse import ArgumentParser
 
 # Constants
-DEFAULT_IMG_SIZE = "200x200"
+DEFAULT_IMG_SIZE = (200, 200)
 DEFAULT_BATCH_SIZE = 32
 DEFAULT_EPOCHS = 50
 DEFAULT_LR = 1e-4
 DEFAULT_VALID_SPLIT = 0.2
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+
 
 def parse_arguments():
     parser = ArgumentParser()
@@ -25,7 +30,16 @@ def parse_arguments():
     parser.add_argument("--epochs", "-e", help="Number of epochs", default=DEFAULT_EPOCHS, type=int)
     parser.add_argument("--learningrate", "-lr", help="Learning rate", default=DEFAULT_LR, type=float)
     args = parser.parse_args()
-    return args
+    
+    # Validate image size format
+    try:
+        img_size = tuple(map(int, args.imagesize.split("x")))
+        if len(img_size) != 2:
+            raise ValueError
+    except ValueError:
+        raise ValueError("Image size must be in the format WIDTHxHEIGHT (e.g., 200x200)")
+    
+    return args, (img_size[0], img_size[1], 3)
 
 def configure_gpu(gpu_number):
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -118,11 +132,9 @@ def save_model(model, model_dir, model_name):
     print(f"Model saved to {os.path.join(model_dir, model_name)}")
 
 if __name__ == "__main__":
-    args = parse_arguments()
+    args, img_size = parse_arguments()
     configure_gpu(args.gpunumber)
     set_random_seeds()
-    sizes = args.imagesize.split("x")
-    img_size = (int(sizes[0]), int(sizes[1]), 3)
     model_name = f'{args.modelname}_{args.imagesize}.h5'
     dataset_path = args.trainingdir
     batch_size = args.batchsize

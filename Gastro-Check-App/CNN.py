@@ -175,18 +175,19 @@ class CustomDigitClassifier:
         labels = to_categorical(labels, num_classes=self.num_classes)
 
         print(f"Augementing images...")
-        # # Augment images
-        # images_augmented = []
-        # labels_augmented = []
-        # for img, lbl in zip(images, labels):
-        #     img = img.reshape((1,) + img.shape)
-        #     for batch in datagen.flow(img, batch_size=1):
-        #         images_augmented.append(batch[0])
-        #         labels_augmented.append(lbl)  # Append the correct label
-        #         break
+        # Augment images
+        images_augmented = []
+        labels_augmented = []
+        for img, lbl in zip(images, labels):
+            img = img.reshape((1,) + img.shape)
+            for batch in datagen.flow(img, batch_size=1):
+                images_augmented.append(batch[0])
+                labels_augmented.append(lbl)  # Append the correct label
+                break
         
         print(f"Successfully loaded & augmented dataset: {self.dataset_path}")
-        return images, labels
+        
+        return np.array(images_augmented), np.array(labels_augmented)
 
     def build_model(self):
         print(f"Building model: {self.model_name}" "...")
@@ -224,7 +225,7 @@ class CustomDigitClassifier:
         self.model = model
         print(f"Model built!")
     
-    def train_model(self, train_images, train_labels, test_images, test_labels, epochs=13, batch_size=32):
+    def train_model(self, train_images, train_labels, test_images, test_labels, epochs=50, batch_size=32):
         """Train the CNN model."""
         if self.model is None:
             self.build_model()
@@ -267,7 +268,7 @@ class CustomDigitClassifier:
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--outputdir", "-o", help="Output directory", default="output/")
+    parser.add_argument("--imagesize", "-i", help="Image Size", default="200x200")
     parser.add_argument("--trainingdir", "-t", help="Location of training data", default="Data/Training/Training_Images_Colour")
     parser.add_argument("--modelname", "-m", help="Model name", default="Model_Training_Images_Colour")
     parser.add_argument("--gpunumber", "-g", help="Model name", default="0")
@@ -277,14 +278,11 @@ if __name__ == "__main__":
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpunumber # String value = 0, 1, 2
     
-    assert os.path.exists(args.trainingdir), "Training directory not found!"
-    
-    if not os.path.exists(args.outputdir):
-        os.makedirs(args.outputdir, exist_ok=True)
+    sizes = args.imagesize.split("x")
     
     # Usage:
     # Initialize the classifier with dataset path
-    img_size=(100, 100, 3)
+    img_size=(sizes[0], sizes[1], 3)
     model_name = f'{args.modelname}_{img_size}.h5' # CHANGE!!!!!!!!!!!!!!
     dataset_path=args.trainingdir # CHANGE!!!!!!!!!!!!!!
     labelshift=False # CHANGE!!!!!!!!!!!!!!

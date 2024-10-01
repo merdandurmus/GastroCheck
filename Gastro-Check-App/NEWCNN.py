@@ -23,12 +23,46 @@ if __name__ == "__main__":
     # Usage:
     # Initialize the classifier with dataset path
     img_size=(int(sizes[0]), int(sizes[1]), 3)
-    model_name = f'{args.modelname}_{img_size}.h5' # CHANGE!!!!!!!!!!!!!!
-    dataset_path=args.trainingdir # CHANGE!!!!!!!!!!!!!!
+    model_name = f'{args.modelname}_{args.imagesize}.h5'
+    dataset_path=args.trainingdir
     labelshift=False # CHANGE!!!!!!!!!!!!!!
-    num_classes=4
 
 
+    # Create a data generator with a validation split (e.g., 20% for validation)
+    datagen = ImageDataGenerator(
+        rescale=1./255,          # Normalize the images
+        validation_split=0.2,     # Use 20% of the data for validation
+        horizontal_flip=False,
+        fill_mode='nearest',
+        rotation_range=20,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        shear_range=0.2,
+        zoom_range=0.2
+    )
+
+    # Training data generator (80% of the data)
+    train_generator = datagen.flow_from_directory(
+        dataset_path,       # Main dataset directory
+        target_size=(img_size[0], img_size[1]),
+        batch_size=32,
+        class_mode='categorical',
+        subset='training'        # Specify this is the training subset
+    )
+
+    # Validation data generator (20% of the data)
+    validation_generator = datagen.flow_from_directory(
+        dataset_path,       # Main dataset directory
+        target_size=(img_size[0], img_size[1]),
+        batch_size=32,
+        class_mode='categorical',
+        subset='validation'      # Specify this is the validation subset
+    )
+    
+    # Dynamically set the number of classes based on the training data
+    num_classes = train_generator.num_classes
+    print(f"Number of classes detected: {num_classes}")
+    
     print(f"Building model: ...")
     model = models.Sequential()
     # First convolutional block
@@ -62,40 +96,11 @@ if __name__ == "__main__":
                 loss='categorical_crossentropy', metrics=['accuracy'])
     
     print(f"Model built!")
+    
+    
 
-    # Create a data generator with a validation split (e.g., 20% for validation)
-    datagen = ImageDataGenerator(
-        rescale=1./255,          # Normalize the images
-        validation_split=0.2,     # Use 20% of the data for validation
-        horizontal_flip=False,
-        fill_mode='nearest',
-        rotation_range=20,
-        width_shift_range=0.2,
-        height_shift_range=0.2,
-        shear_range=0.2,
-        zoom_range=0.2
-    )
+    early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
-    # Training data generator (80% of the data)
-    train_generator = datagen.flow_from_directory(
-        dataset_path,       # Main dataset directory
-        target_size=(img_size[0], img_size[1]),
-        batch_size=32,
-        class_mode='categorical',
-        subset='training'        # Specify this is the training subset
-    )
-
-    # Validation data generator (20% of the data)
-    validation_generator = datagen.flow_from_directory(
-        dataset_path,       # Main dataset directory
-        target_size=(img_size[0], img_size[1]),
-        batch_size=32,
-        class_mode='categorical',
-        subset='validation'      # Specify this is the validation subset
-    )
-
-    early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-    early = EarlyStopping(monitor="val_loss", min_delta=0, patience=10, verbose=1, mode="min", baseline=None, restore_best_weights=False)
 
     # Fit the model using the generators
     model.fit(
@@ -104,7 +109,7 @@ if __name__ == "__main__":
         steps_per_epoch=train_generator.samples // train_generator.batch_size,
         validation_data=validation_generator,
         validation_steps=validation_generator.samples // validation_generator.batch_size,
-        callbacks=[early_stopping, early]
+        callbacks=[early_stopping]
     )
 
     # After training, evaluate the model using the test data ! ADD SEPARATE TEST SET

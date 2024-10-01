@@ -135,7 +135,7 @@ if __name__ == "__main__":
     args, img_size = parse_arguments()
     configure_gpu(args.gpunumber)
     set_random_seeds()
-    model_name = f'{args.modelname}_{args.imagesize}.h5'
+    model_name = f'{args.modelname}_{args.imagesize}.keras'
     dataset_path = args.trainingdir
     batch_size = args.batchsize
     epochs = args.epochs
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-7, verbose=1)
     model_dir = 'Data/models'
     checkpoint = ModelCheckpoint(
-        filepath=os.path.join(model_dir, 'best_model.h5'),
+        filepath=os.path.join(model_dir, model_name),
         monitor='val_accuracy',
         save_best_only=True,
         verbose=1
@@ -163,4 +163,4 @@ if __name__ == "__main__":
     steps_per_epoch = train_generator.samples // batch_size
     validation_steps = validation_generator.samples // batch_size
     history = train_model(model, train_generator, validation_generator, epochs, steps_per_epoch, validation_steps, callbacks)
-    save_model(model, model_dir, model_name)
+    #save_model(model, model_dir, model_name)

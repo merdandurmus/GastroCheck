@@ -79,7 +79,7 @@ if __name__ == "__main__":
     # Training data generator (80% of the data)
     train_generator = datagen.flow_from_directory(
         dataset_path,       # Main dataset directory
-        target_size=(100, 100),
+        target_size=(img_size[0], img_size[1]),
         batch_size=32,
         class_mode='categorical',
         subset='training'        # Specify this is the training subset
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     # Validation data generator (20% of the data)
     validation_generator = datagen.flow_from_directory(
         dataset_path,       # Main dataset directory
-        target_size=(100, 100),
+        target_size=(img_size[0], img_size[1]),
         batch_size=32,
         class_mode='categorical',
         subset='validation'      # Specify this is the validation subset

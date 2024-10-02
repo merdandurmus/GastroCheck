@@ -9,6 +9,7 @@ import math
 from datetime import datetime
 
 import cv2
+import keras
 import numpy as np
 from PIL import Image, ImageTk
 
@@ -210,7 +211,7 @@ class VideoFeed:
         self.array_data_label.config(text=seen_digits_text)
         
         # CHANGE IMAGE
-        image_folder = "GI-Tract-Images/"
+        image_folder = "GastroCheck/GI-Tract-Images/"
         
         # Initialize the background with the default image
         background = Image.open(os.path.join(image_folder, "0.png")).convert("RGBA")
@@ -558,7 +559,7 @@ class Application:
         self.gi_frame = ttk.Frame(self.root)
         self.gi_frame.grid(row=0, column=2, padx=5, pady=5)
 
-        self.gi_image = Image.open("GI-Tract-Images/Seen.png").resize((400, 600), Image.Resampling.LANCZOS)
+        self.gi_image = Image.open("GastroCheck/GI-Tract-Images/Seen.png").resize((400, 600), Image.Resampling.LANCZOS)
         self.gi_image_tk = ImageTk.PhotoImage(self.gi_image)
 
         self.gi_label = ttk.Label(self.gi_frame, image=self.gi_image_tk)
@@ -992,7 +993,8 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    model = load_model('Data/models/Model_Training_Images_Colour_ImageSize(100, 100, 3).h5')  # Replace with your model file
+    #model = load_model('/Users/merdan/Development/Gastro_app/GastroCheck/Data/models/colour50x50.h5')  # Replace with your model file
+    model = keras.saving.load_model("/Users/merdan/Development/Gastro_app/GastroCheck/Data/models/ColouredImages_500x500.keras")
     labelshift = False # Change to True if a labelshift of (+1) is used in the training data (if the training data contains a -1 class)
     num_classes= 4
 
@@ -1006,6 +1008,6 @@ if __name__ == "__main__":
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model, tracker, image_size=(100, 100, 3), labelshift=labelshift, num_classes=num_classes) # Replace with your image size of file
+    app = Application(root, model, tracker, image_size=(50, 50, 3), labelshift=labelshift, num_classes=num_classes) # Replace with your image size of file
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

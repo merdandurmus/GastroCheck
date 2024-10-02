@@ -8,6 +8,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator # type: igno
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard # type: ignore
 from tensorflow.keras.layers import BatchNormalization # type: ignore
 from argparse import ArgumentParser
+from tensorflow.keras.applications.inception_v3 import InceptionV3
 
 # Constants
 DEFAULT_IMG_SIZE = (200, 200)
@@ -87,32 +88,13 @@ def get_data_generators(img_size, dataset_path, batch_size):
     return train_generator, validation_generator, num_classes
 
 def build_model(img_size, num_classes):
-    model = models.Sequential()
-    # First convolutional block
-    model.add(layers.Conv2D(32, (3, 3), kernel_regularizer=regularizers.l2(0.001), input_shape=(img_size[0], img_size[1], 3)))
-    model.add(BatchNormalization())
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Dropout(0.25))
-    # Second convolutional block
-    model.add(layers.Conv2D(128, (3, 3), kernel_regularizer=regularizers.l2(0.001)))
-    model.add(BatchNormalization())
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Dropout(0.25))
-    # Third convolutional block
-    model.add(layers.Conv2D(256, (3, 3), kernel_regularizer=regularizers.l2(0.001)))
-    model.add(BatchNormalization())
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Dropout(0.25))
-    # Flatten and dense layers
-    model.add(layers.Flatten())
-    model.add(layers.Dense(128, kernel_regularizer=regularizers.l2(0.001)))
-    model.add(BatchNormalization())
-    model.add(layers.Activation('relu'))
-    model.add(layers.Dropout(0.5))
-    model.add(layers.Dense(num_classes, activation='softmax'))
+    model = InceptionV3(input_shape = img_size, include_top=False, weights = 'imagenet')
+    
+    for layer in model.layers:
+            layer.trainable = False
+    
+    
+    
     return model
 
 def train_model(model, train_generator, validation_generator, epochs, steps_per_epoch, validation_steps, callbacks):
@@ -128,7 +110,6 @@ def train_model(model, train_generator, validation_generator, epochs, steps_per_
 
 def save_model(model, model_dir, model_name):
     os.makedirs(model_dir, exist_ok=True)
-    model_name = "NEW" + model_name
     model.save(os.path.join(model_dir, model_name))
     print(f"Model saved to {os.path.join(model_dir, model_name)}")
 
@@ -136,7 +117,7 @@ if __name__ == "__main__":
     args, img_size = parse_arguments()
     configure_gpu(args.gpunumber)
     set_random_seeds()
-    model_name = f'{args.modelname}_{args.imagesize}.h5'
+    model_name = f'{args.modelname}_{args.imagesize}.keras'
     dataset_path = args.trainingdir
     batch_size = args.batchsize
     epochs = args.epochs
@@ -164,4 +145,4 @@ if __name__ == "__main__":
     steps_per_epoch = train_generator.samples // batch_size
     validation_steps = validation_generator.samples // batch_size
     history = train_model(model, train_generator, validation_generator, epochs, steps_per_epoch, validation_steps, callbacks)
-    save_model(model, model_dir, model_name)
+    #save_model(model, model_dir, model_name)

@@ -62,7 +62,8 @@ def get_data_generators(img_size, dataset_path, batch_size):
         shear_range=0.2,
         zoom_range=0.2,
         horizontal_flip=False,
-        fill_mode='nearest'
+        fill_mode='nearest',
+        brightness_range=[0.8, 1.2],
     )
     # No augmentation for validation
     val_datagen = ImageDataGenerator(
@@ -89,7 +90,10 @@ def get_data_generators(img_size, dataset_path, batch_size):
 
 def build_model(img_size, num_classes):
     base_model = InceptionV3(input_shape = img_size, include_top=False, weights = 'imagenet')
-    base_model.trainable = False
+    # Unfreeze the top layers of the base model after initial training
+    base_model.trainable = True
+    for layer in base_model.layers[:-50]:  # Freeze all layers except the last 50: unfreeze a few of the top layers of the base model to allow for fine-tuning.
+        layer.trainable = False
     
     # Add custom classification layers
     model = models.Sequential()

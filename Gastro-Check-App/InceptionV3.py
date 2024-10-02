@@ -8,7 +8,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator # type: igno
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard # type: ignore
 from tensorflow.keras.layers import BatchNormalization # type: ignore
 from argparse import ArgumentParser
-from tensorflow.keras.applications.inception_v3 import InceptionV3
+from tensorflow.keras.applications import InceptionV3 
 
 # Constants
 DEFAULT_IMG_SIZE = (200, 200)
@@ -88,11 +88,16 @@ def get_data_generators(img_size, dataset_path, batch_size):
     return train_generator, validation_generator, num_classes
 
 def build_model(img_size, num_classes):
-    model = InceptionV3(input_shape = img_size, include_top=False, weights = 'imagenet')
+    base_model = InceptionV3(input_shape = img_size, include_top=False, weights = 'imagenet')
+    base_model.trainable = False
     
-    for layer in model.layers:
-            layer.trainable = False
-    
+    # Add custom classification layers
+    model = models.Sequential()
+    model.add(base_model)
+    model.add(layers.GlobalAveragePooling2D())  # Replace Flatten with GlobalAveragePooling for better performance
+    model.add(layers.Dense(256, activation='relu', kernel_regularizer=regularizers.l2(0.001)))
+    model.add(layers.Dropout(0.5))
+    model.add(layers.Dense(num_classes, activation='softmax'))
     
     
     return model
@@ -117,7 +122,7 @@ if __name__ == "__main__":
     args, img_size = parse_arguments()
     configure_gpu(args.gpunumber)
     set_random_seeds()
-    model_name = f'{args.modelname}_{args.imagesize}.keras'
+    model_name = f'INCEPTION_{args.modelname}_{args.imagesize}.h5'
     dataset_path = args.trainingdir
     batch_size = args.batchsize
     epochs = args.epochs

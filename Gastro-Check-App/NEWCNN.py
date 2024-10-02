@@ -164,4 +164,4 @@ if __name__ == "__main__":
     steps_per_epoch = train_generator.samples // batch_size
     validation_steps = validation_generator.samples // batch_size
     history = train_model(model, train_generator, validation_generator, epochs, steps_per_epoch, validation_steps, callbacks)
-    save_model(model, model_dir, model_name)
+    #save_model(model, model_dir, model_name)

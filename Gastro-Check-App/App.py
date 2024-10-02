@@ -205,10 +205,19 @@ class VideoFeed:
         imgtk = ImageTk.PhotoImage(image=img_resized)
         self.video_frame.imgtk = imgtk
         self.video_frame.config(image=imgtk)
+        
+    def digit2gastric(self, digit):
+        digit_map = {
+            0: "Area RED",
+            1: "Area Pink",
+            2: "Area Green",
+            3: "Area Blue"
+        }
+        return digit_map.get(digit, "Unknown Prediction")
 
     def update_seen_digits_display(self):
         """Updates the label that displays the seen digits."""
-        seen_digits_text = ", ".join(map(str, self.digit_recognizer.seen_digits))
+        seen_digits_text = ", ".join(map(self.digit2gastric, self.digit_recognizer.seen_digits))
         self.array_data_label.config(text=seen_digits_text)
         
         # CHANGE IMAGE
@@ -218,7 +227,7 @@ class VideoFeed:
         background = Image.open(os.path.join(image_folder, "0.png")).convert("RGBA")
         
         if seen_digits_text != "":
-            numbers_list = sorted([int(num.strip()) for num in seen_digits_text.split(',')])
+            numbers_list = sorted(self.digit_recognizer.seen_digits)
             
             # Check if exactly 4 digits are recognized
             if len(numbers_list) == self.num_classes:
@@ -249,7 +258,7 @@ class VideoFeed:
 
     def update_detecting_digits_display(self, predicted_class):
         """Updates the label that displays the seen digits."""
-        self.digit_show_label.config(text=predicted_class)
+        self.digit_show_label.config(text=self.digit2gastric(predicted_class))
 
     def stop(self):
         """Stops the video feed and releases the camera."""
@@ -570,7 +579,7 @@ class Application:
         """
         Updates the tracked motion data metrics and refreshes the corresponding labels in the user interface.
         """
-        timestamp_array, trans_matrix = zip(*self.Tracked_Motion_Data) if self.Tracked_Motion_Data else ([], [])
+        timestamp_array, trans_matrix, _ = zip(*self.Tracked_Motion_Data) if self.Tracked_Motion_Data else ([], [], [])
         # Apply Butterworth filter to the transformation matrices before calculations
         if len(trans_matrix) > 21:
             trans_matrix = self.butterworth_filter(trans_matrix)
@@ -814,7 +823,7 @@ class Application:
         - Ensure `self.Tracked_Motion_Data` contains data in the expected format before calling this method.
         - The CSV file will be saved in the 'ProcedureData' directory, which will be created if it does not already exist.
         """
-        folder_path = 'Data/ProcedureData'
+        folder_path = 'GastroCheck/Data/ProcedureData'
         os.makedirs(folder_path, exist_ok=True)
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -822,8 +831,8 @@ class Application:
 
         with open(csv_filename, mode='w', newline='') as file:
             writer = csv.writer(file)
-            for (timeStamp, data) in self.Tracked_Motion_Data:
-                writer.writerow([timeStamp, data])
+            for (timeStamp, data, areaSeen) in self.Tracked_Motion_Data:
+                writer.writerow([timeStamp, data, areaSeen])
 
     def save_tracked_data_to_variable(self):
         """
@@ -856,12 +865,13 @@ class Application:
             if not np.isnan(data).any():
                 T_ref_inv = np.linalg.inv(data[0])
                 T_sensor_rel_ref = np.dot(T_ref_inv, data[1])
-                elapsed_time = time.time() - self.start_time
-                self.Tracked_Motion_Data.append([elapsed_time, T_sensor_rel_ref])
-                raw_data.append([elapsed_time, T_sensor_rel_ref])
+                elapsed_time = time.time() - self.start_time                
+                areaSeen = self.array_data_label.cget("text")
+                self.Tracked_Motion_Data.append([elapsed_time, T_sensor_rel_ref, areaSeen])
+                raw_data.append([elapsed_time, T_sensor_rel_ref, areaSeen])
             time.sleep(0.025)
             
-        if raw_data:  # Ensure that there is data to filter
+        if len(raw_data) > 21:  # Ensure that there is data to filter
             # Extract the transformation matrices (2nd element of each data point) and apply filtering
             raw_matrices = np.array([item[1] for item in raw_data])
             filtered_matrices = self.butterworth_filter(raw_matrices)
@@ -869,7 +879,7 @@ class Application:
             # Clear old data and store filtered data
             self.Tracked_Motion_Data.clear()  # Clear any previous data
             for i in range(len(raw_data)):
-                self.Tracked_Motion_Data.append([raw_data[i][0], filtered_matrices[i]])  # Save filtered data
+                self.Tracked_Motion_Data.append([raw_data[i][0], filtered_matrices[i], raw_data[i][2]])  # Save filtered data
 
     def start_again(self):
         """

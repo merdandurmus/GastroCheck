@@ -3,6 +3,7 @@
 # an NDITracker for motion tracking.
 import os
 import csv
+import scipy.signal as signal
 import time
 import threading
 import math
@@ -570,6 +571,10 @@ class Application:
         Updates the tracked motion data metrics and refreshes the corresponding labels in the user interface.
         """
         timestamp_array, trans_matrix = zip(*self.Tracked_Motion_Data) if self.Tracked_Motion_Data else ([], [])
+        # Apply Butterworth filter to the transformation matrices before calculations
+        if len(trans_matrix) > 21:
+            trans_matrix = self.butterworth_filter(trans_matrix)
+    
         metrics = {
             'time': round(self.calculate_time(timestamp_array), 3),
             'path_length': round(self.calculate_path_length(trans_matrix), 3),
@@ -770,6 +775,24 @@ class Application:
         self.start_button.config(text="Procedure Stopped", state="disabled")
         self.start_again_button.pack()
 
+    def butterworth_filter(self, data, cutoff=6, fs=40, order=6):
+        """
+        Applies a low-pass Butterworth filter to the input data.
+        
+        Parameters:
+        - data: The data to be filtered (assumed to be a numpy array).
+        - cutoff: Cutoff frequency in Hz.
+        - fs: Sampling frequency in Hz (40 Hz sampling rate since 25ms sleep time between samples).
+        - order: The order of the Butterworth filter.
+        
+        Returns:
+        - Filtered data.
+        """
+        nyquist = 0.5 * fs
+        normal_cutoff = cutoff / nyquist
+        b, a = signal.butter(order, normal_cutoff, btype='low', analog=False)
+        filtered_data = signal.filtfilt(b, a, data, axis=0)
+        return filtered_data
 
     def save_tracked_data_to_file(self):
         """
@@ -826,6 +849,8 @@ class Application:
 
         """
         self.tracker.start_tracking()
+        raw_data = []  # Temporary storage for raw data before filtering
+        
         while self.is_procedure_running:
             data = self.tracker.get_frame()[3]
             if not np.isnan(data).any():
@@ -833,9 +858,18 @@ class Application:
                 T_sensor_rel_ref = np.dot(T_ref_inv, data[1])
                 elapsed_time = time.time() - self.start_time
                 self.Tracked_Motion_Data.append([elapsed_time, T_sensor_rel_ref])
+                raw_data.append([elapsed_time, T_sensor_rel_ref])
             time.sleep(0.025)
-
-
+            
+        if raw_data:  # Ensure that there is data to filter
+            # Extract the transformation matrices (2nd element of each data point) and apply filtering
+            raw_matrices = np.array([item[1] for item in raw_data])
+            filtered_matrices = self.butterworth_filter(raw_matrices)
+            
+            # Clear old data and store filtered data
+            self.Tracked_Motion_Data.clear()  # Clear any previous data
+            for i in range(len(raw_data)):
+                self.Tracked_Motion_Data.append([raw_data[i][0], filtered_matrices[i]])  # Save filtered data
 
     def start_again(self):
         """
@@ -872,9 +906,6 @@ class Application:
         self.start_button.config(text="Start Procedure", state="normal", command=self.start_procedure)
         self.start_again_button.pack_forget()
         
-        
-
-
     def on_close(self):
         """
         Handles the cleanup and shutdown process when closing the application window.

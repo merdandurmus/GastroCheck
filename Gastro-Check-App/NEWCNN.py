@@ -155,7 +155,7 @@ if __name__ == "__main__":
     model_dir = 'Data/models'
     checkpoint = ModelCheckpoint(
         filepath=os.path.join(model_dir, model_name),
-        monitor='accuracy',
+        monitor='loss',
         save_best_only=True,
         verbose=1
     )

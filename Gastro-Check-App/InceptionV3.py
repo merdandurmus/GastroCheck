@@ -126,7 +126,7 @@ if __name__ == "__main__":
     args, img_size = parse_arguments()
     configure_gpu(args.gpunumber)
     set_random_seeds()
-    model_name = f'INCEPTION_{args.modelname}_{args.imagesize}.h5'
+    model_name = f'INCEPTIONV3_{args.modelname}_{args.imagesize}.h5'
     dataset_path = args.trainingdir
     batch_size = args.batchsize
     epochs = args.epochs
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     model_dir = 'Data/models'
     checkpoint = ModelCheckpoint(
         filepath=os.path.join(model_dir, model_name),
-        monitor='accuracy',
+        monitor='loss',
         save_best_only=True,
         verbose=1
     )

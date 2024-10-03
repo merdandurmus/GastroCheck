@@ -45,5 +45,5 @@ def equalize_folder_item_count(parent_folder):
     print("All folders now have the same number of items.")
 
 # Example usage
-parent_folder = "Data/Training/Training_Images_Colour"  # Replace with the actual path to your "Training_Images" folder
+parent_folder = "GastroCheck/Data/Training/TrainingColours&Pattern"  # Replace with the actual path to your "Training_Images" folder
 equalize_folder_item_count(parent_folder)

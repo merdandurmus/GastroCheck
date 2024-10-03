@@ -1034,8 +1034,7 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    #model = load_model('/Users/merdan/Development/Gastro_app/GastroCheck/Data/models/colour50x50.h5')  # Replace with your model file
-    model = keras.saving.load_model("GastroCheck/Data/models/TESTKERAS_50x50.h5")
+    model = keras.saving.load_model("GastroCheck/Data/models/Colours4_100x100.h5")
     labelshift = False # Change to True if a labelshift of (+1) is used in the training data (if the training data contains a -1 class)
     num_classes= 4
 
@@ -1049,6 +1048,6 @@ if __name__ == "__main__":
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model, tracker, image_size=(50, 50, 3), labelshift=labelshift, num_classes=num_classes) # Replace with your image size of file
+    app = Application(root, model, tracker, image_size=(100, 100, 3), labelshift=labelshift, num_classes=num_classes) # Replace with your image size of file
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

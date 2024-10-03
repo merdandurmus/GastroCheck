@@ -60,7 +60,7 @@ def get_data_generators(img_size, dataset_path, batch_size):
         height_shift_range=0.2,
         shear_range=0.2,
         zoom_range=0.2,
-        horizontal_flip=False,
+        horizontal_flip=True,
         fill_mode='nearest'
     )
     # No augmentation for validation
@@ -128,7 +128,7 @@ def train_model(model, train_generator, validation_generator, epochs, steps_per_
 
 def save_model(model, model_dir, model_name):
     os.makedirs(model_dir, exist_ok=True)
-    model_name = "NEW" + model_name
+    model_name = "FINAL" + model_name
     model.save(os.path.join(model_dir, model_name))
     print(f"Model saved to {os.path.join(model_dir, model_name)}")
 
@@ -164,4 +164,4 @@ if __name__ == "__main__":
     steps_per_epoch = train_generator.samples // batch_size
     validation_steps = validation_generator.samples // batch_size
     history = train_model(model, train_generator, validation_generator, epochs, steps_per_epoch, validation_steps, callbacks)
-    #save_model(model, model_dir, model_name)
+    save_model(model, model_dir, model_name)

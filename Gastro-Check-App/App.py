@@ -1034,7 +1034,7 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    model = keras.saving.load_model("GastroCheck/Data/models/Colours4_100x100.h5")
+    model = keras.saving.load_model("GastroCheck/Data/models/New/ColourAndPattern_100x100.h5")
     labelshift = False # Change to True if a labelshift of (+1) is used in the training data (if the training data contains a -1 class)
     num_classes= 4
 

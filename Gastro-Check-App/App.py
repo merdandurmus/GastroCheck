@@ -103,7 +103,7 @@ class RealTimeDigitRecognition:
 
 
 class VideoFeed:
-    def __init__(self, window, video_frame, digit_recognizer, array_data_label, digit_show_label, gi_label, num_classes):
+    def __init__(self, window, video_frame, digit_recognizer, areas_seen_data_label, current_area_data_label, areas_to_be_seen_data_label, gi_label, num_classes):
         """
         Initializes the VideoFeed object for capturing and displaying video frames.
 
@@ -111,7 +111,7 @@ class VideoFeed:
         - **window (Tk)**: The root Tkinter window where the video feed will be displayed.
         - **video_frame (Label)**: The label widget where video frames will be shown.
         - **digit_recognizer (RealTimeDigitRecognition)**: The digit recognition system to process video frames.
-        - **array_data_label (Label)**: The label widget for displaying recognized digits.
+        - **areas_seen_data_label (Label)**: The label widget for displaying recognized digits.
 
         Initializes the video capture, sets up control flags, and starts the video feed.
 
@@ -124,15 +124,16 @@ class VideoFeed:
         self.cap = cv2.VideoCapture(0) #1 FOR VIDEO CAPTURE
         self.running = True
         self.digit_recognizer = digit_recognizer
-        self.array_data_label = array_data_label
-        self.digit_show_label = digit_show_label
+        self.areas_seen_data_label = areas_seen_data_label
+        self.current_area_data_label = current_area_data_label
+        self.areas_to_be_seen_data_label = areas_to_be_seen_data_label
         self.frame_update_delay = 100  # Delay in ms for video frame updates
         self.num_classes = num_classes
 
         self.start_video_feed()
 
     def start_video_feed(self):
-        """Starts the video feed and handles real-time digit recognition."""
+        """Starts the video feed and handles real-time digit recognition."""        
         if self.running:
             ret, frame = self.read_frame()
             if ret:
@@ -190,21 +191,28 @@ class VideoFeed:
         
     def digit2gastric(self, digit):
         digit_map = {
-            0: "Area Purple",
-            1: "Area Yellow",
-            2: "Area Blue",
-            3: "Area Green",
-            4: "Area Red",
-            5: "Area Pink",
-            6: "Area White",
-            7: "Area Orange",
+            0: "Esophagus (Purple)",
+            1: "Gastroesophageal Junction (Yellow)",
+            2: "Cardia (Blue)",
+            3: "Body (Greater Curvature) (Green)",
+            4: "Fundus (Red)",
+            5: "Pylorus (Pink)",
+            6: "Duodenal Bulb (White)",
+            7: "Second Part of the Duodenum (Orange)",
         }
-        return digit_map.get(digit, "Unknown Prediction")
+        return digit_map.get(digit, "No Anatomical Landmark Present")
 
     def update_seen_digits_display(self):
         """Updates the label that displays the seen digits."""
-        seen_digits_text = ", ".join(map(self.digit2gastric, self.digit_recognizer.seen_digits))
-        self.array_data_label.config(text=seen_digits_text)
+        
+        # Show all seen areas
+        seen_areas_text = "\n".join(map(self.digit2gastric, self.digit_recognizer.seen_digits))
+        self.areas_seen_data_label.config(text=seen_areas_text)
+        
+        # Check which areas have not been seen and show them
+        all_digits = set(np.arange(num_classes))
+        unseen_digits = all_digits - self.digit_recognizer.seen_digits
+        self.areas_to_be_seen_data_label.config(text="\n".join(map(self.digit2gastric, unseen_digits)))
         
         # CHANGE IMAGE
         image_folder = "GastroCheck/GI-Tract-Images/"
@@ -212,27 +220,27 @@ class VideoFeed:
         # Initialize the background with the default image
         background = Image.open(os.path.join(image_folder, "0.png")).convert("RGBA")
         
-        if seen_digits_text != "":
-            numbers_list = sorted(self.digit_recognizer.seen_digits)
+        # if seen_areas_text != "":
+        #     numbers_list = sorted(self.digit_recognizer.seen_digits)
             
-            # Check if exactly 4 digits are recognized
-            if len(numbers_list) == self.num_classes:
-                image_name = "SeenFULL.png"
-                background = Image.open(os.path.join(image_folder, image_name)).convert("RGBA")
-            else:
-                # Loop through recognized digits and overlay images
-                for n in numbers_list:
-                    image_path = os.path.join(image_folder, f"{n}.png")
-                    overlay = Image.open(image_path).convert("RGBA")
+        #     # Check if exactly 4 digits are recognized
+        #     if len(numbers_list) == self.num_classes:
+        #         image_name = "SeenFULL.png"
+        #         background = Image.open(os.path.join(image_folder, image_name)).convert("RGBA")
+        #     else:
+        #         # Loop through recognized digits and overlay images
+        #         for n in numbers_list:
+        #             image_path = os.path.join(image_folder, f"{n}.png")
+        #             overlay = Image.open(image_path).convert("RGBA")
 
-                    # Resize overlay image to match background if necessary
-                    overlay = overlay.resize(background.size)
+        #             # Resize overlay image to match background if necessary
+        #             overlay = overlay.resize(background.size)
 
-                    # Set the transparency level (0 - fully transparent, 255 - fully opaque)
-                    overlay.putalpha(128)  # For 50% transparency
+        #             # Set the transparency level (0 - fully transparent, 255 - fully opaque)
+        #             overlay.putalpha(128)  # For 50% transparency
 
-                    # Stack the images on top of each other
-                    background = Image.alpha_composite(background, overlay)
+        #             # Stack the images on top of each other
+        #             background = Image.alpha_composite(background, overlay)
 
         # Resize and update the label with the new image
         self.gi_image = background.resize((400, 600), Image.Resampling.LANCZOS)
@@ -244,7 +252,7 @@ class VideoFeed:
 
     def update_detecting_digits_display(self, predicted_class):
         """Updates the label that displays the seen digits."""
-        self.digit_show_label.config(text=self.digit2gastric(predicted_class))
+        self.current_area_data_label.config(text=self.digit2gastric(predicted_class))
 
     def stop(self):
         """Stops the video feed and releases the camera."""
@@ -269,7 +277,7 @@ class Application:
         - Calls `self.setup_ui()` to initialize and arrange the various UI components, including frames and labels.
 
         4. **Initializes the Video Feed**:
-        - Creates an instance of `VideoFeed` with parameters including `self.root`, `self.video_frame`, `self.digit_recognizer`, and `self.array_data_label` to handle video processing and digit recognition.
+        - Creates an instance of `VideoFeed` with parameters including `self.root`, `self.video_frame`, `self.digit_recognizer`, and `self.areas_seen_data_label` to handle video processing and digit recognition.
 
         5. **Initializes Other Attributes**:
         - Sets `self.start_time` to `None`, indicating that the procedure has not started yet.
@@ -305,7 +313,7 @@ class Application:
         self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size, labelshift=labelshift)
         self.setup_ui()
 
-        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.array_data_label, self.digit_show_label, self.gi_label, self.num_classes)
+        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.areas_seen_data_label, self.current_area_data_label, self.areas_to_be_seen_data_label, self.gi_label, self.num_classes)
         self.start_time = None
         self.running_timer = False
         self.is_procedure_running = False
@@ -424,13 +432,13 @@ class Application:
         - Places the frame in the grid layout at row 1, column 1, with padding of 10 pixels on all sides (`padx=10, pady=10`).
 
         2. **Adds a Title Label**:
-        - Creates a `Label` widget named `self.array_label` with the text "Digits Seen".
+        - Creates a `Label` widget named `self.areas_seen_label` with the text "Digits Seen".
         - Sets the font of the label to Arial, size 14.
         - Configures the background color to light sky blue (`bg="LightSkyBlue1"`).
         - Packs the label into `self.array_frame`.
 
         3. **Adds a Data Display Label**:
-        - Creates another `Label` widget named `self.array_data_label` with an initial empty text.
+        - Creates another `Label` widget named `self.areas_seen_data_label` with an initial empty text.
         - Sets the font of the label to Arial, size 12.
         - Configures the background color to light sky blue (`bg="LightSkyBlue1"`).
         - Packs the label into `self.array_frame`.
@@ -449,32 +457,50 @@ class Application:
         self.array_frame = ttk.Frame(self.root)
         self.array_frame.grid(row=1, column=1, padx=10, pady=15, sticky="nsew")
 
-        # Create two frames: one for "Digits Seen" and one for tracked data
-        self.digits_frame = ttk.Frame(self.array_frame)
-        self.digits_frame.grid(row=0, column=0, padx=10, pady=15, sticky="n")
+        # Create 3 frames: one for "areas_frame" and one for tracked_data_frame
+        self.current_areas_frame = ttk.Frame(self.array_frame)
+        self.current_areas_frame.grid(row=0, column=0, padx=10, pady=15, sticky="n")
+        
+        self.areas_frame = ttk.Frame(self.array_frame)
+        self.areas_frame.grid(row=0, column=1, padx=10, pady=15, sticky="n")
+        
+        self.missed_areas_frame = ttk.Frame(self.array_frame)
+        self.missed_areas_frame.grid(row=0, column=2, padx=10, pady=15, sticky="n")
 
         self.tracked_data_frame = ttk.Frame(self.array_frame)
-        self.tracked_data_frame.grid(row=0, column=1, padx=40, pady=10, sticky="n")
+        self.tracked_data_frame.grid(row=0, column=3, padx=40, pady=10, sticky="n")
 
         # Styles
-        self.style.configure("Blue.TLabel", foreground="blue", font=("Arial", 14))
+        self.style.configure("Blue.TLabel", foreground="black", font=("Arial", 14))
         self.style.configure("Green.TLabel", foreground="green", font=("Arial", 14))
+        self.style.configure("Red.TLabel", foreground="red", font=("Arial", 14))
 
 
-        # Adding digits information in the digits_frame
-        self.digit_label = ttk.Label(self.digits_frame, text="Area", style="Blue.TLabel")
-        self.digit_label.pack()
+        # Adding current area seen information in the areas_frame
+        self.current_area_label = ttk.Label(self.current_areas_frame, text="Area", style="Blue.TLabel")
+        self.current_area_label.pack()
 
-        self.digit_show_label = ttk.Label(self.digits_frame, text="", style="Blue.TLabel")
-        self.digit_show_label.pack()
+        self.current_area_data_label = ttk.Label(self.current_areas_frame, text="")
+        self.current_area_data_label.pack()
+        
+        # Adding area's seen information in the areas_frame
+        self.areas_seen_label = ttk.Label(self.areas_frame, text="Gastric Area's Seen", style="Green.TLabel")
+        self.areas_seen_label.pack()
 
-        self.array_label = ttk.Label(self.digits_frame, text="Gastric Area's Seen", style="Green.TLabel")
-        self.array_label.pack()
+        self.areas_seen_data_label = ttk.Label(self.areas_frame, text="")
+        self.areas_seen_data_label.pack()
+        
+        # Adding area's to be seen information in the areas_frame
+        self.areas_to_be_seen_label = ttk.Label(self.missed_areas_frame, text="Gastric Area's Missed", style="Red.TLabel")
+        self.areas_to_be_seen_label.pack()
 
-        self.array_data_label = ttk.Label(self.digits_frame, text="", style="Green.TLabel")
-        self.array_data_label.pack()
+        self.areas_to_be_seen_data_label = ttk.Label(self.missed_areas_frame, text="")
+        self.areas_to_be_seen_data_label.pack()
+        
 
         # Creating the tracked data labels in the tracked_data_frame
+        self.tracked_data_label = ttk.Label(self.tracked_data_frame, text="Motion Metrics", style="Blue.TLabel")
+        self.tracked_data_label.pack()
         self.create_tracked_data_labels()
 
     def create_tracked_data_labels(self):
@@ -543,7 +569,7 @@ class Application:
         - Calling `create_data_label("Sample Data")` creates a label with the text "Sample Data", sets its font and background color, and returns the label widget.
         """
         self.style.configure("Purple.TLabel", foreground="purple", font=("Arial", 13))
-        label = ttk.Label(parent_frame, text=text, style="Purple.TLabel")
+        label = ttk.Label(parent_frame, text=text)
         label.pack(anchor="w")  # Align the labels to the left inside the parent frame
         return label
 
@@ -848,7 +874,7 @@ class Application:
                 T_ref_inv = np.linalg.inv(data[0])
                 T_sensor_rel_ref = np.dot(T_ref_inv, data[1])
                 elapsed_time = time.time() - self.start_time                
-                areaSeen = self.array_data_label.cget("text")
+                areaSeen = self.areas_seen_data_label.cget("text")
                 self.Tracked_Motion_Data.append([elapsed_time, T_sensor_rel_ref, areaSeen])
                 raw_data.append([elapsed_time, T_sensor_rel_ref, areaSeen])
             time.sleep(0.025)
@@ -872,26 +898,27 @@ class Application:
         
         1. Resets the `seen_digits`: Clears the set of digits recognized by the digit recognizer to prepare for a new session.
         2. Clears tracked motion data: Empties the `Tracked_Motion_Data` list to remove any previously tracked movement.
-        3. Resets display labels: Updates the `array_data_label` and `timer_label` to their initial state, clearing any information displayed to the user.
+        3. Resets display labels: Updates the `areas_seen_data_label` and `timer_label` to their initial state, clearing any information displayed to the user.
         4. Resets tracking data: Invokes the `reset_tracked_data()` method to reset any internal tracking mechanisms.
         5. Configures the start button: Sets the `start_button` text back to "Start Procedure" and re-enables it, allowing the user to begin the process again.
         6. Hides the "Start Again" button: Calls `pack_forget()` on the `start_again_button` to remove it from the user interface.
         """
         self.digit_recognizer.seen_digits = set()
         self.Tracked_Motion_Data = []
-        self.array_data_label.config(text="")
+        self.areas_seen_data_label.config(text="")
+        self.video_feed.update_seen_digits_display()
 
         # Use ttk.Style to configure the timer label color instead of fg
         style = ttk.Style()
         style.configure("Timer.TLabel", foreground="black")
         self.timer_label.config(text="Time: 0:00", style="Timer.TLabel")
         
-        self.gi_image = Image.open("GI-Tract-Images/Seen.png").resize((400, 600), Image.Resampling.LANCZOS)
-        self.gi_image_tk = ImageTk.PhotoImage(self.gi_image)
+        # self.gi_image = Image.open("GastroCheck/GI-Tract-Images/Seen.png").resize((400, 600), Image.Resampling.LANCZOS)
+        # self.gi_image_tk = ImageTk.PhotoImage(self.gi_image)
         
-        # Keep a reference to avoid garbage collection
-        self.gi_image.imgtk = self.gi_image_tk
-        self.gi_label.config(image=self.gi_image_tk)
+        # # Keep a reference to avoid garbage collection
+        # self.gi_image.imgtk = self.gi_image_tk
+        # self.gi_label.config(image=self.gi_image_tk)
         
 
         self.reset_tracked_data_labels()

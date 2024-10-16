@@ -76,16 +76,8 @@ class RealTimeDigitRecognition:
         return resized_frame.reshape(1, self.image_size[0], self.image_size[1], self.image_size[2]).astype('float32') / 255
 
     def predict_digit(self, processed_frame):
-        # Convert the processed_frame back to a displayable format for OpenCV
-        #display_frame = (processed_frame[0] * 255).astype(np.uint8)  # Remove batch dimension and scale back to 0-255
-
         """Runs the model prediction and returns the predicted class."""
         predictions = self.model.predict(processed_frame)
-
-        # cv2.imshow('BLUE', display_frame)
-        # bgr_frame = cv2.cvtColor(display_frame, cv2.COLOR_RGB2BGR)
-        # cv2.imshow('NORMAL', bgr_frame)
-        # cv2.waitKey(1)  # Small delay for display
 
         print(predictions)
         max_prediction = np.max(predictions)
@@ -108,14 +100,6 @@ class RealTimeDigitRecognition:
 
         return predicted_class
 
-    def display_frame(self, frame, predicted_class, blinking_dot):
-        """Displays the predicted digit and a blinking dot if the process is running."""
-        if predicted_class != -1:
-            cv2.putText(frame, f"Predicted Digit: {predicted_class}", (10, frame.shape[0] - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
-
-        if blinking_dot:
-            cv2.circle(frame, (50, 50), 20, (0, 0, 255), -1)  # Red dot at the top-left corner
 
 
 class VideoFeed:
@@ -142,7 +126,6 @@ class VideoFeed:
         self.digit_recognizer = digit_recognizer
         self.array_data_label = array_data_label
         self.digit_show_label = digit_show_label
-        self.blinking_dot = False  # Control blinking red dot for display
         self.frame_update_delay = 100  # Delay in ms for video frame updates
         self.num_classes = num_classes
 
@@ -154,7 +137,7 @@ class VideoFeed:
             ret, frame = self.read_frame()
             if ret:
                 predicted_class = self.process_frame_and_recognize_digit(frame)
-                self.display_frame(frame, predicted_class)
+                self.display_frame(frame)
                 self.update_detecting_digits_display(predicted_class)
 
                 # Update seen digits display if procedure is running
@@ -173,9 +156,8 @@ class VideoFeed:
         predicted_class = self.digit_recognizer.process_frame(frame)
         return predicted_class
 
-    def display_frame(self, frame, predicted_class):
-        """Displays the processed frame in the UI with the predicted class and optional blinking dot."""
-        self.digit_recognizer.display_frame(frame, predicted_class, self.blinking_dot)
+    def display_frame(self, frame):
+        """Displays the processed frame in the UI."""
         frame_rgb = self.convert_frame_to_rgb(frame)
         self.update_tkinter_image(frame_rgb)
 
@@ -690,7 +672,6 @@ class Application:
         This method performs the following actions:
 
         1. **Starts digit recognition**: Enables updates to recognized digits by setting `self.digit_recognizer.update_digits` to `True`.
-        2. **Enables visual indication**: Activates a blinking dot on the video feed by setting `self.video_feed.blinking_dot` to `True`, signaling that the procedure is running.
         3. **Initializes timer**:
         - Records the current time in `self.start_time`.
         - Sets `self.running_timer` to `True` and calls `self.update_timer()` to start updating the timer label every second.
@@ -704,7 +685,6 @@ class Application:
 
         """
         self.digit_recognizer.update_digits = True
-        self.video_feed.blinking_dot = True
 
         self.start_time = time.time()
         self.running_timer = True
@@ -748,7 +728,6 @@ class Application:
         This method handles the following actions when the procedure is stopped:
 
         1. **Stops digit recognition**: Disables further updates to recognized digits by setting `self.digit_recognizer.update_digits` to `False`.
-        2. **Stops video feed indicator**: Turns off any visual indicators of the procedure (such as a blinking dot) by setting `self.video_feed.blinking_dot` to `False`.
         3. **Stops the timer**: Sets `self.running_timer` to `False`, stopping the internal procedure timer.
         4. **Stops procedure execution**: Sets `self.is_procedure_running` to `False`, signaling that the procedure has ended.
         5. **Updates tracked data**: Calls `self.update_tracked_data()` to perform any final updates to the tracked motion data before the procedure stops.
@@ -764,7 +743,6 @@ class Application:
         This method ensures a proper shutdown of the digit recognition and tracking procedure while safely saving collected data.
         """
         self.digit_recognizer.update_digits = False
-        self.video_feed.blinking_dot = False
         self.running_timer = False
         self.is_procedure_running = False
         self.update_tracked_data()

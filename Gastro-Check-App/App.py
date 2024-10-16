@@ -3,6 +3,7 @@
 # an NDITracker for motion tracking.
 import os
 import csv
+from tkinter import simpledialog
 import scipy.signal as signal
 import time
 import threading
@@ -806,10 +807,43 @@ class Application:
 
         tracker.stop_tracking()
 
-        # Prompt the user to save the log file
+        # Prompt the user whether to save the tracked data
         should_save = messagebox.askyesno("Save Tracked Data File", "Would you like to save the log file containing the tracked data?")
+        
         if should_save:
-            self.save_tracked_data_to_file()
+            # Ask for the procedure name
+            procedure_name = simpledialog.askstring("Procedure Name", "Please enter the procedure name:")
+            
+            if procedure_name:
+                # Create a new window for selecting skill level
+                skill_window = tk.Toplevel()
+                skill_window.title("Select Skill Level")
+
+                # Variable to hold the selected skill level
+                skill_level = tk.StringVar(value="Novice")  # Default selection
+
+                # Create checkboxes for skill levels
+                novice_checkbox = tk.Radiobutton(skill_window, text="Novice", variable=skill_level, value="Novice")
+                intermediate_checkbox = tk.Radiobutton(skill_window, text="Intermediate", variable=skill_level, value="Intermediate")
+                expert_checkbox = tk.Radiobutton(skill_window, text="Expert", variable=skill_level, value="Expert")
+
+                # Pack the checkboxes
+                novice_checkbox.pack(anchor='w')
+                intermediate_checkbox.pack(anchor='w')
+                expert_checkbox.pack(anchor='w')
+
+                # Button to confirm the selection
+                def confirm_selection():
+                    skill_window.destroy()  # Close the selection window
+                    # Call the method to save the tracked data with the procedure name and skill level
+                    self.save_tracked_data_to_file(procedure_name, skill_level.get())
+
+                confirm_button = tk.Button(skill_window, text="Confirm", command=confirm_selection)
+                confirm_button.pack(pady=10)
+
+                skill_window.mainloop()
+            else:
+                messagebox.showwarning("Warning", "Procedure name cannot be empty.")
 
         self.start_button.config(text="Procedure Stopped", state="disabled")
         self.start_again_button.pack()
@@ -833,7 +867,7 @@ class Application:
         filtered_data = signal.filtfilt(b, a, data, axis=0)
         return filtered_data
 
-    def save_tracked_data_to_file(self):
+    def save_tracked_data_to_file(self, procedure_name, skill_level):
         """
         Saves the tracked motion data to a CSV file.
 
@@ -857,7 +891,7 @@ class Application:
         os.makedirs(folder_path, exist_ok=True)
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        csv_filename = os.path.join(folder_path, f'tracked_motion_data_{timestamp}.csv')
+        csv_filename = os.path.join(folder_path, f'{procedure_name}:{skill_level}-tracked_motion_data_{timestamp}.csv')
 
         with open(csv_filename, mode='w', newline='') as file:
             writer = csv.writer(file)
@@ -1065,7 +1099,7 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    model = keras.saving.load_model("GastroCheck/Data/models/New/INCEPTIONV3_Colours-Patterns-8Sites_100x100.h5")
+    model = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_Colours-Patterns-8Sites_100x100.h5")
     labelshift = False # Change to True if a labelshift of (+1) is used in the training data (if the training data contains a -1 class)
     num_classes= 8
 

@@ -201,6 +201,36 @@ class VideoFeed:
             7: "Second Part of the Duodenum (Orange)",
         }
         return digit_map.get(digit, "No Anatomical Landmark Present")
+    
+    def combine_images(self, img1, img2):    
+         # Ensure images are in RGBA format
+        img1 = img1.convert("RGBA")
+        img2 = img2.convert("RGBA")
+        
+        # Convert images to numpy arrays
+        arr1 = np.array(img1)
+        arr2 = np.array(img2)
+
+        # Create masks for green pixels in both images
+        # Assuming the green color is defined as R=0, G=255, B=0
+        green_mask1 = (arr1[:, :, 0] == 0) & (arr1[:, :, 1] == 255) & (arr1[:, :, 2] == 0)
+        green_mask2 = (arr2[:, :, 0] == 0) & (arr2[:, :, 1] == 255) & (arr2[:, :, 2] == 0)
+
+        # Create a new array for the output image
+        combined_arr = np.zeros_like(arr1)
+
+        # Combine images based on green masks
+        combined_arr[green_mask1] = arr1[green_mask1]
+        combined_arr[green_mask2] = arr2[green_mask2]
+
+        # Fill in non-green pixels from both images (where they are not green in either)
+        combined_arr[~green_mask1 & ~green_mask2] = arr1[~green_mask1 & ~green_mask2]
+
+        # Convert the combined array back to an image
+        combined_image = Image.fromarray(combined_arr)
+
+        # Save or show the combined image
+        return combined_image
 
     def update_seen_digits_display(self):
         """Updates the label that displays the seen digits."""
@@ -218,29 +248,21 @@ class VideoFeed:
         image_folder = "GastroCheck/GI-Tract-Images/"
         
         # Initialize the background with the default image
-        background = Image.open(os.path.join(image_folder, "0.png")).convert("RGBA")
+        background = Image.open(os.path.join(image_folder, "ProcedureEGD.png")).convert("RGBA")
         
-        # if seen_areas_text != "":
-        #     numbers_list = sorted(self.digit_recognizer.seen_digits)
+        if seen_areas_text != "":
+            numbers_list = sorted(self.digit_recognizer.seen_digits)
             
-        #     # Check if exactly 4 digits are recognized
-        #     if len(numbers_list) == self.num_classes:
-        #         image_name = "SeenFULL.png"
-        #         background = Image.open(os.path.join(image_folder, image_name)).convert("RGBA")
-        #     else:
-        #         # Loop through recognized digits and overlay images
-        #         for n in numbers_list:
-        #             image_path = os.path.join(image_folder, f"{n}.png")
-        #             overlay = Image.open(image_path).convert("RGBA")
-
-        #             # Resize overlay image to match background if necessary
-        #             overlay = overlay.resize(background.size)
-
-        #             # Set the transparency level (0 - fully transparent, 255 - fully opaque)
-        #             overlay.putalpha(128)  # For 50% transparency
-
-        #             # Stack the images on top of each other
-        #             background = Image.alpha_composite(background, overlay)
+            # Check if exactly 4 digits are recognized
+            if len(numbers_list) == self.num_classes:
+                image_name = "ProcedureEGD-all.png"
+                background = Image.open(os.path.join(image_folder, image_name)).convert("RGBA")
+            else:
+                # Loop through recognized digits and overlay images
+                for n in numbers_list:
+                    image_path = os.path.join(image_folder, f"ProcedureEGD-{n}.png")
+                    overlay = Image.open(image_path).convert("RGBA")
+                    background = self.combine_images(background, overlay)
 
         # Resize and update the label with the new image
         self.gi_image = background.resize((400, 600), Image.Resampling.LANCZOS)
@@ -581,7 +603,7 @@ class Application:
         self.gi_frame = ttk.Frame(self.root)
         self.gi_frame.grid(row=0, column=2, padx=5, pady=5)
 
-        self.gi_image = Image.open("GastroCheck/GI-Tract-Images/Seen.png").resize((400, 600), Image.Resampling.LANCZOS)
+        self.gi_image = Image.open("GastroCheck/GI-Tract-Images/ProcedureEGD.png").resize((400, 600), Image.Resampling.LANCZOS)
         self.gi_image_tk = ImageTk.PhotoImage(self.gi_image)
 
         self.gi_label = ttk.Label(self.gi_frame, image=self.gi_image_tk)

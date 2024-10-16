@@ -208,10 +208,14 @@ class VideoFeed:
         
     def digit2gastric(self, digit):
         digit_map = {
-            0: "Area RED",
-            1: "Area Pink",
-            2: "Area Green",
-            3: "Area Blue"
+            0: "Area Purple",
+            1: "Area Yellow",
+            2: "Area Blue",
+            3: "Area Green",
+            4: "Area Red",
+            5: "Area Pink",
+            6: "Area White",
+            7: "Area Orange",
         }
         return digit_map.get(digit, "Unknown Prediction")
 
@@ -1034,9 +1038,9 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    model = keras.saving.load_model("GastroCheck/Data/models/New/ColourAndPattern_100x100.h5")
+    model = keras.saving.load_model("GastroCheck/Data/models/New/INCEPTIONV3_Colours-Patterns-8Sites_100x100.h5")
     labelshift = False # Change to True if a labelshift of (+1) is used in the training data (if the training data contains a -1 class)
-    num_classes= 4
+    num_classes= 8
 
     # Set up the tracker
     settings_aurora = {

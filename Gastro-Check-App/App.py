@@ -283,7 +283,7 @@ class VideoFeed:
         self.cap.release()
 
 class Application:
-    def __init__(self, root, model, tracker, image_size, labelshift, num_classes):
+    def __init__(self, root, model, should_use_tracker,  tracker, image_size, labelshift, num_classes):
         """
         Initializes the application by setting up the main window and configuring necessary components.
 
@@ -332,6 +332,7 @@ class Application:
         self.image_size = image_size
         self.labelshift = labelshift
         self.num_classes = num_classes
+        self.should_use_tracker = should_use_tracker
 
         self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size, labelshift=labelshift)
         self.setup_ui()
@@ -596,7 +597,6 @@ class Application:
         label.pack(anchor="w")  # Align the labels to the left inside the parent frame
         return label
 
-
     def create_gi_frame(self):
         """
         Creates and configures a frame to display a graphical image in the user interface.
@@ -740,7 +740,8 @@ class Application:
         self.update_timer()
 
         self.is_procedure_running = True
-        threading.Thread(target=self.save_tracked_data_to_variable).start()
+        if self.should_use_tracker:
+            threading.Thread(target=self.save_tracked_data_to_variable).start()
         self.update_data_flag = True
         self.start_button.config(text="Stop Procedure", command=self.stop_procedure)
 
@@ -804,46 +805,46 @@ class Application:
         style = ttk.Style()
         style.configure("Timer.TLabel", foreground="red" if minutes < 7 else "green")
         self.timer_label.config(style="Timer.TLabel")
-
-        tracker.stop_tracking()
-
-        # Prompt the user whether to save the tracked data
-        should_save = messagebox.askyesno("Save Tracked Data File", "Would you like to save the log file containing the tracked data?")
         
-        if should_save:
-            # Ask for the procedure name
-            procedure_name = simpledialog.askstring("Procedure Name", "Please enter the procedure name:")
+        if self.should_use_tracker:
+            tracker.stop_tracking()
+            # Prompt the user whether to save the tracked data
+            should_save = messagebox.askyesno("Save Tracked Data File", "Would you like to save the log file containing the tracked data?")
             
-            if procedure_name:
-                # Create a new window for selecting skill level
-                skill_window = tk.Toplevel()
-                skill_window.title("Select Skill Level")
+            if should_save:
+                # Ask for the procedure name
+                procedure_name = simpledialog.askstring("Procedure Name", "Please enter the procedure name:")
+                
+                if procedure_name:
+                    # Create a new window for selecting skill level
+                    skill_window = tk.Toplevel()
+                    skill_window.title("Select Skill Level")
 
-                # Variable to hold the selected skill level
-                skill_level = tk.StringVar(value="Novice")  # Default selection
+                    # Variable to hold the selected skill level
+                    skill_level = tk.StringVar(value="Novice")  # Default selection
 
-                # Create checkboxes for skill levels
-                novice_checkbox = tk.Radiobutton(skill_window, text="Novice", variable=skill_level, value="Novice")
-                intermediate_checkbox = tk.Radiobutton(skill_window, text="Intermediate", variable=skill_level, value="Intermediate")
-                expert_checkbox = tk.Radiobutton(skill_window, text="Expert", variable=skill_level, value="Expert")
+                    # Create checkboxes for skill levels
+                    novice_checkbox = tk.Radiobutton(skill_window, text="Novice", variable=skill_level, value="Novice")
+                    intermediate_checkbox = tk.Radiobutton(skill_window, text="Intermediate", variable=skill_level, value="Intermediate")
+                    expert_checkbox = tk.Radiobutton(skill_window, text="Expert", variable=skill_level, value="Expert")
 
-                # Pack the checkboxes
-                novice_checkbox.pack(anchor='w')
-                intermediate_checkbox.pack(anchor='w')
-                expert_checkbox.pack(anchor='w')
+                    # Pack the checkboxes
+                    novice_checkbox.pack(anchor='w')
+                    intermediate_checkbox.pack(anchor='w')
+                    expert_checkbox.pack(anchor='w')
 
-                # Button to confirm the selection
-                def confirm_selection():
-                    skill_window.destroy()  # Close the selection window
-                    # Call the method to save the tracked data with the procedure name and skill level
-                    self.save_tracked_data_to_file(procedure_name, skill_level.get())
+                    # Button to confirm the selection
+                    def confirm_selection():
+                        skill_window.destroy()  # Close the selection window
+                        # Call the method to save the tracked data with the procedure name and skill level
+                        self.save_tracked_data_to_file(procedure_name, skill_level.get())
 
-                confirm_button = tk.Button(skill_window, text="Confirm", command=confirm_selection)
-                confirm_button.pack(pady=10)
+                    confirm_button = tk.Button(skill_window, text="Confirm", command=confirm_selection)
+                    confirm_button.pack(pady=10)
 
-                skill_window.mainloop()
-            else:
-                messagebox.showwarning("Warning", "Procedure name cannot be empty.")
+                    skill_window.mainloop()
+                else:
+                    messagebox.showwarning("Warning", "Procedure name cannot be empty.")
 
         self.start_button.config(text="Procedure Stopped", state="disabled")
         self.start_again_button.pack()
@@ -992,7 +993,8 @@ class Application:
         """
         self.video_feed.stop()
         self.root.destroy()
-        self.tracker.close()
+        if self.should_use_tracker:
+            self.tracker.close()
 
 
     # Motion Metric Calculators
@@ -1102,17 +1104,44 @@ if __name__ == "__main__":
     model = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_Colours-Patterns-8Sites_100x100.h5")
     labelshift = False # Change to True if a labelshift of (+1) is used in the training data (if the training data contains a -1 class)
     num_classes= 8
-
-    # Set up the tracker
-    settings_aurora = {
-        "tracker type": "aurora",
-        "serial port": 3, # Specify port 4 explicitly
-        "verbose": True,
-    }
-    tracker = NDITracker(settings_aurora)
+    image_size=(100, 100, 3)
+    
+    should_use_tracker = messagebox.askyesno("NDI Tracker", "Would you like to use a NDI Tracker during the procedure?")
+        
+    tracker = None
+    if should_use_tracker:
+        if should_use_tracker:
+            # Ask for tracker and video feed ports
+            tracker_port = simpledialog.askinteger("Tracker Port", "Please specify the tracker port (enter -1 to probe all ports):")
+            
+            if tracker_port is not None:
+                # Check if the tracker port is set to -1 (probe all ports)
+                if tracker_port == -1:
+                    settings_aurora = {
+                        "tracker type": "aurora",
+                        "ports to probe:": 5,  # indicates probing all ports
+                        "verbose": True,
+                    }
+                    print("Probing all available ports for the tracker.")
+                else:
+                    # Set up the tracker with the specified port
+                    settings_aurora = {
+                        "tracker type": "aurora",
+                        "serial port": tracker_port,  # Use specified tracker port
+                        "verbose": True,
+                    }
+                    print(f"Tracker will use port: {tracker_port}")
+                
+            else:
+                messagebox.showwarning("Input Error", "Both ports must be specified.")
+        else:
+            print("Tracker not being used.")
+            
+        # Initialize tracker with the specified settings
+        tracker = NDITracker(settings_aurora)
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model, tracker, image_size=(100, 100, 3), labelshift=labelshift, num_classes=num_classes) # Replace with your image size of file
+    app = Application(root, model, tracker, should_use_tracker, image_size, labelshift=labelshift, num_classes=num_classes) # Replace with your image size of file
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

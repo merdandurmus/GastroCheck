@@ -24,12 +24,13 @@ logging.basicConfig(level=logging.INFO)
 def parse_arguments():
     parser = ArgumentParser()
     parser.add_argument("--imagesize", "-i", help="Image Size", default=DEFAULT_IMG_SIZE)
-    parser.add_argument("--trainingdir", "-t", help="Location of training data", default="Data/Training/Training_Images_Colour")
+    parser.add_argument("--trainingdir", "-train", help="Location of training data", default="Data/Training/Training_Images_Colour")
     parser.add_argument("--modelname", "-m", help="Model name", default="Model_Training_Images_Colour")
     parser.add_argument("--gpunumber", "-g", help="GPU number", default="0")
     parser.add_argument("--batchsize", "-b", help="Batch size", default=DEFAULT_BATCH_SIZE, type=int)
     parser.add_argument("--epochs", "-e", help="Number of epochs", default=DEFAULT_EPOCHS, type=int)
     parser.add_argument("--learningrate", "-lr", help="Learning rate", default=DEFAULT_LR, type=float)
+    parser.add_argument("--testdir", "-test", help="test directory rate", default=DEFAULT_LR, type=float)
     args = parser.parse_args()
     
     # Validate image size format
@@ -121,6 +122,25 @@ def save_model(model, model_dir, model_name):
     os.makedirs(model_dir, exist_ok=True)
     model.save(os.path.join(model_dir, model_name))
     print(f"Model saved to {os.path.join(model_dir, model_name)}")
+    
+def evaluate_model(model, img_size, dataset_path, batch_size):
+    test_datagen = ImageDataGenerator(rescale=1./255)  # No augmentation, just rescaling
+    
+    # Load the test data
+    test_generator = test_datagen.flow_from_directory(
+        dataset_path,
+        target_size=(img_size[0], img_size[1]),
+        batch_size=batch_size,
+        class_mode='categorical',
+        shuffle=False  # Don't shuffle for evaluation to keep consistent results
+    )
+    
+    # Evaluate the model on the test dataset
+    loss, accuracy = model.evaluate(test_generator)
+    print(f"Test Loss: {loss}")
+    print(f"Test Accuracy: {accuracy}")
+    
+    return loss, accuracy
 
 if __name__ == "__main__":
     args, img_size = parse_arguments()
@@ -130,6 +150,7 @@ if __name__ == "__main__":
     dataset_path = args.trainingdir
     batch_size = args.batchsize
     epochs = args.epochs
+    test_dataset_path = args.testset
     learning_rate = args.learningrate
     if not os.path.isdir(dataset_path):
         raise FileNotFoundError(f"The dataset directory {dataset_path} does not exist.")
@@ -155,3 +176,14 @@ if __name__ == "__main__":
     validation_steps = validation_generator.samples // batch_size
     history = train_model(model, train_generator, validation_generator, epochs, steps_per_epoch, validation_steps, callbacks)
     #save_model(model, model_dir, model_name)
+    
+    # Load the trained model for evaluation
+    print(f"Loading model {model_name} for evaluation...")
+    model = tf.keras.models.load_model(os.path.join(model_dir, model_name))
+    
+    # Evaluate the model on the test dataset
+    if os.path.isdir(test_dataset_path):
+        print("Evaluating the model on the test dataset...")
+        evaluate_model(model, img_size, test_dataset_path, batch_size)
+    else:
+        print(f"Test dataset directory {test_dataset_path} does not exist.")

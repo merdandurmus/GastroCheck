@@ -22,7 +22,7 @@ from motionMetrics import MotionMetrics
 from realTimeDigitRecognition import RealTimeDigitRecognition
 from videoFeed import VideoFeed
 class Application:
-    def __init__(self, root, model, should_use_tracker,  tracker, image_size, label_shift, num_classes):
+    def __init__(self, root, model, should_use_tracker,  tracker, image_size, label_shift, num_classes, video_port):
         """
         Initializes the application by setting up the main window and configuring necessary components.
 
@@ -76,7 +76,7 @@ class Application:
         self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size, label_shift=label_shift)
         self.setup_ui()
 
-        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.areas_seen_data_label, self.current_area_data_label, self.areas_to_be_seen_data_label, self.gi_label, self.num_classes)
+        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.areas_seen_data_label, self.current_area_data_label, self.areas_to_be_seen_data_label, self.gi_label, self.num_classes, video_port=video_port)
         self.start_time = None
         self.running_timer = False
         self.is_procedure_running = False
@@ -745,41 +745,44 @@ if __name__ == "__main__":
     image_size=(100, 100, 3)
     
     should_use_tracker = messagebox.askyesno("NDI Tracker", "Would you like to use a NDI Tracker during the procedure?")
+    video_port = simpledialog.askinteger("Video Port", "Please specify the Video port:")
+    
+    if video_port is None:
+        messagebox.showwarning("Input Error", "Video port must be specified.")
+        quit()
         
     tracker = None
     if should_use_tracker:
-        if should_use_tracker:
-            # Ask for tracker and video feed ports
-            tracker_port = simpledialog.askinteger("Tracker Port", "Please specify the tracker port (enter -1 to probe all ports):")
-            
-            if tracker_port is not None:
-                # Check if the tracker port is set to -1 (probe all ports)
-                if tracker_port == -1:
-                    settings_aurora = {
-                        "tracker type": "aurora",
-                        "ports to probe:": 5,  # indicates probing all ports
-                        "verbose": True,
-                    }
-                    print("Probing all available ports for the tracker.")
-                else:
-                    # Set up the tracker with the specified port
-                    settings_aurora = {
-                        "tracker type": "aurora",
-                        "serial port": tracker_port,  # Use specified tracker port
-                        "verbose": True,
-                    }
-                    print(f"Tracker will use port: {tracker_port}")
-                
+        # Ask for tracker and video feed ports
+        tracker_port = simpledialog.askinteger("Tracker Port", "Please specify the tracker port (enter -1 to probe all ports):")
+        
+        if tracker_port is not None:
+            # Check if the tracker port is set to -1 (probe all ports)
+            if tracker_port == -1:
+                settings_aurora = {
+                    "tracker type": "aurora",
+                    "ports to probe": 5,  # indicates probing all ports
+                    "verbose": True,
+                }
+                print("Probing all available ports for the tracker.")
             else:
-                messagebox.showwarning("Input Error", "Both ports must be specified.")
-        else:
-            print("Tracker not being used.")
+                # Set up the tracker with the specified port
+                settings_aurora = {
+                    "tracker type": "aurora",
+                    "serial port": tracker_port,  # Use specified tracker port
+                    "verbose": True,
+                }
+                print(f"Tracker will use port: {tracker_port}")
             
-        # Initialize tracker with the specified settings
-        tracker = NDITracker(settings_aurora)
+            # Initialize tracker with the specified settings
+            tracker = NDITracker(settings_aurora)
+        else:
+            messagebox.showwarning("Input Error", "Tracker port must be specified.")
+    else:
+        print("Tracker not being used.")
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model, tracker, should_use_tracker, image_size, label_shift=label_shift, num_classes=num_classes) # Replace with your image size of file
+    app = Application(root, model=model, should_use_tracker=should_use_tracker, tracker=tracker, image_size=image_size, label_shift=label_shift, num_classes=num_classes, video_port=video_port) # Replace with your image size of file
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

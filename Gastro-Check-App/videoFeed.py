@@ -5,7 +5,7 @@ from PIL import Image, ImageTk
 
 
 class VideoFeed:
-    def __init__(self, window, video_frame, digit_recognizer, areas_seen_data_label, current_area_data_label, areas_to_be_seen_data_label, gi_label, num_classes):
+    def __init__(self, window, video_frame, digit_recognizer, areas_seen_data_label, current_area_data_label, areas_to_be_seen_data_label, gi_label, num_classes, video_port):
         """
         Initializes the VideoFeed object for capturing and displaying video frames.
 
@@ -23,7 +23,8 @@ class VideoFeed:
         self.window = window
         self.video_frame = video_frame
         self.gi_label = gi_label
-        self.cap = cv2.VideoCapture(0) #1 FOR VIDEO CAPTURE
+        self.video_port = video_port
+        self.cap = cv2.VideoCapture(video_port) #1 FOR VIDEO CAPTURE
         self.running = True
         self.digit_recognizer = digit_recognizer
         self.areas_seen_data_label = areas_seen_data_label

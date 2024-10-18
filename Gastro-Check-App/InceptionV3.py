@@ -25,12 +25,12 @@ def parse_arguments():
     parser = ArgumentParser()
     parser.add_argument("--imagesize", "-i", help="Image Size", default=DEFAULT_IMG_SIZE)
     parser.add_argument("--trainingdir", "-train", help="Location of training data", default="Data/Training/Training_Images_Colour")
+    parser.add_argument("--testdir", "-test", help="Location of test data", default="Data/Training/Training_Images_Colour")
     parser.add_argument("--modelname", "-m", help="Model name", default="Model_Training_Images_Colour")
     parser.add_argument("--gpunumber", "-g", help="GPU number", default="0")
     parser.add_argument("--batchsize", "-b", help="Batch size", default=DEFAULT_BATCH_SIZE, type=int)
     parser.add_argument("--epochs", "-e", help="Number of epochs", default=DEFAULT_EPOCHS, type=int)
     parser.add_argument("--learningrate", "-lr", help="Learning rate", default=DEFAULT_LR, type=float)
-    parser.add_argument("--testdir", "-test", help="test directory rate", default=DEFAULT_LR, type=float)
     args = parser.parse_args()
     
     # Validate image size format

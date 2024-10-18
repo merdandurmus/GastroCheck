@@ -150,7 +150,7 @@ if __name__ == "__main__":
     dataset_path = args.trainingdir
     batch_size = args.batchsize
     epochs = args.epochs
-    test_dataset_path = args.testset
+    test_dataset_path = args.testdir
     learning_rate = args.learningrate
     if not os.path.isdir(dataset_path):
         raise FileNotFoundError(f"The dataset directory {dataset_path} does not exist.")

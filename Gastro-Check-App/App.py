@@ -7,10 +7,8 @@ from tkinter import simpledialog
 import scipy.signal as signal
 import time
 import threading
-import math
 from datetime import datetime
 
-import cv2
 import keras
 import numpy as np
 from PIL import Image, ImageTk
@@ -19,271 +17,12 @@ import tkinter as tk
 from tkinter import Frame, messagebox
 from tkinter import ttk
 
-from tensorflow.keras.models import load_model # type: ignore
 from sksurgerynditracker.nditracker import NDITracker
-
-
-
-class RealTimeDigitRecognition:
-    def __init__(self, model, image_size, labelshift, downscale_factor=0.5):
-        """
-        Initializes the RealTimeDigitRecognition object for recognizing digits in video frames.
-
-        Parameters:
-        - **model (object)**: The digit recognition model used for identifying digits.
-        - **frame_skip (int, optional)**: Number of frames to skip between processing, default is 3.
-        - **downscale_factor (float, optional)**: Factor to downscale the video frames, default is 0.5.
-
-        Attributes:
-        - **model**: The digit recognition model.
-        - **frame_skip**: Frames to skip between processing.
-        - **downscale_factor**: Factor for downscaling frames.
-        - **seen_digits (set)**: Set to store unique digits that have been recognized.
-        - **frame_count (int)**: Counter for the number of frames processed.
-        - **update_digits (bool)**: Flag to control whether digits should be updated.
-
-        Returns:
-        - **None**: This method initializes the attributes of the object but does not return any values.
-        """
-        self.model = model
-        self.image_size = image_size
-        self.downscale_factor = downscale_factor
-        self.seen_digits = set()  # Use set for faster lookups
-        self.frame_count = 0
-        self.update_digits = False
-        self.labelshift = labelshift
-
-    def preprocess_frame(self, frame):
-        """Resizes and converts the frame to grayscale for model prediction."""
-        # Original frame
-        # cv2.imshow('Original Frame', frame)
-
-        #frame = cv2.resize(frame, (0, 0), fx=self.downscale_factor, fy=self.downscale_factor)
-        #cv2.imshow('Resized Frame', frame)
-        
-        #cv2.imshow('Grayscale Frame', gray_frame)
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        # bgr_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) # USE THIS TO SHOW THE FRAME WITH CORRECT COLOUR
-        # cv2.imshow('NORMAL', bgr_frame)
-
-        resized_frame = cv2.resize(rgb_frame, (self.image_size[0], self.image_size[1]))
-        # cv2.imshow('BLUE', resized_frame)
-        # cv2.imshow('NORMAL', bgr_frame)
-
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-
-        return resized_frame.reshape(1, self.image_size[0], self.image_size[1], self.image_size[2]).astype('float32') / 255
-
-    def predict_digit(self, processed_frame):
-        """Runs the model prediction and returns the predicted class."""
-        predictions = self.model.predict(processed_frame)
-
-        print(predictions)
-        max_prediction = np.max(predictions)
-        predicted_class = np.argmax(predictions)
-        if max_prediction < 0.85:
-            return -1
-        if self.labelshift:
-            return (predicted_class -1) #Label shift so return original prediction - 1!
-        else:
-            return (predicted_class) #No Label shift so return original prediction!
-
-    def process_frame(self, frame):
-        """Processes a single frame and updates the seen digits list if required."""
-        processed_frame = self.preprocess_frame(frame)
-        predicted_class = self.predict_digit(processed_frame)
-
-        # Update seen digits if the process is running and the digit is valid
-        if self.update_digits and predicted_class != -1 and predicted_class not in self.seen_digits:
-            self.seen_digits.add(predicted_class)
-
-        return predicted_class
-
-
-
-class VideoFeed:
-    def __init__(self, window, video_frame, digit_recognizer, areas_seen_data_label, current_area_data_label, areas_to_be_seen_data_label, gi_label, num_classes):
-        """
-        Initializes the VideoFeed object for capturing and displaying video frames.
-
-        Parameters:
-        - **window (Tk)**: The root Tkinter window where the video feed will be displayed.
-        - **video_frame (Label)**: The label widget where video frames will be shown.
-        - **digit_recognizer (RealTimeDigitRecognition)**: The digit recognition system to process video frames.
-        - **areas_seen_data_label (Label)**: The label widget for displaying recognized digits.
-
-        Initializes the video capture, sets up control flags, and starts the video feed.
-
-        Returns:
-        - **None**: This method sets up the video capture and related settings but does not return any values.
-        """
-        self.window = window
-        self.video_frame = video_frame
-        self.gi_label = gi_label
-        self.cap = cv2.VideoCapture(0) #1 FOR VIDEO CAPTURE
-        self.running = True
-        self.digit_recognizer = digit_recognizer
-        self.areas_seen_data_label = areas_seen_data_label
-        self.current_area_data_label = current_area_data_label
-        self.areas_to_be_seen_data_label = areas_to_be_seen_data_label
-        self.frame_update_delay = 100  # Delay in ms for video frame updates
-        self.num_classes = num_classes
-
-        self.start_video_feed()
-
-    def start_video_feed(self):
-        """Starts the video feed and handles real-time digit recognition."""        
-        if self.running:
-            ret, frame = self.read_frame()
-            if ret:
-                predicted_class = self.process_frame_and_recognize_digit(frame)
-                self.display_frame(frame)
-                self.update_detecting_digits_display(predicted_class)
-
-                # Update seen digits display if procedure is running
-                if self.digit_recognizer.update_digits:
-                    self.update_seen_digits_display()
-                
-            # Schedule the next video frame update
-            self.window.after(self.frame_update_delay, self.start_video_feed)
-
-    def read_frame(self):
-        """Reads a frame from the video feed."""
-        return self.cap.read()
-
-    def process_frame_and_recognize_digit(self, frame):
-        """Processes the frame for digit recognition and returns the predicted class."""
-        predicted_class = self.digit_recognizer.process_frame(frame)
-        return predicted_class
-
-    def display_frame(self, frame):
-        """Displays the processed frame in the UI."""
-        frame_rgb = self.convert_frame_to_rgb(frame)
-        self.update_tkinter_image(frame_rgb)
-
-    def convert_frame_to_rgb(self, frame):
-        """Converts the frame to RGB format."""
-        return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-    def update_tkinter_image(self, frame_rgb):
-        """Converts a frame to Tkinter-compatible format and updates the video display."""
-        img = Image.fromarray(frame_rgb)
-        
-        width, height = img.size
-        
-        # Calculate the amount to crop from each side (1/4 of the width)
-        crop_amount = width // 9
-
-        # Define the cropping box: (left, upper, right, lower)
-        left = crop_amount
-        right = width - crop_amount
-        top = 0
-        bottom = height
-        
-        img_cropped = img.crop((left, top, right, bottom))
-        
-        
-        img_resized = img_cropped.resize((1200, 700), Image.Resampling.LANCZOS)
-        imgtk = ImageTk.PhotoImage(image=img_resized)
-        self.video_frame.imgtk = imgtk
-        self.video_frame.config(image=imgtk)
-        
-    def digit2gastric(self, digit):
-        digit_map = {
-            0: "Esophagus (Purple)",
-            1: "Gastroesophageal Junction (Yellow)",
-            2: "Cardia (Blue)",
-            3: "Body (Greater Curvature) (Green)",
-            4: "Fundus (Red)",
-            5: "Pylorus (Pink)",
-            6: "Duodenal Bulb (White)",
-            7: "Second Part of the Duodenum (Orange)",
-        }
-        return digit_map.get(digit, "No Anatomical Landmark Present")
-    
-    def combine_images(self, img1, img2):    
-         # Ensure images are in RGBA format
-        img1 = img1.convert("RGBA")
-        img2 = img2.convert("RGBA")
-        
-        # Convert images to numpy arrays
-        arr1 = np.array(img1)
-        arr2 = np.array(img2)
-
-        # Create masks for green pixels in both images
-        # Assuming the green color is defined as R=0, G=255, B=0
-        green_mask1 = (arr1[:, :, 0] == 0) & (arr1[:, :, 1] == 255) & (arr1[:, :, 2] == 0)
-        green_mask2 = (arr2[:, :, 0] == 0) & (arr2[:, :, 1] == 255) & (arr2[:, :, 2] == 0)
-
-        # Create a new array for the output image
-        combined_arr = np.zeros_like(arr1)
-
-        # Combine images based on green masks
-        combined_arr[green_mask1] = arr1[green_mask1]
-        combined_arr[green_mask2] = arr2[green_mask2]
-
-        # Fill in non-green pixels from both images (where they are not green in either)
-        combined_arr[~green_mask1 & ~green_mask2] = arr1[~green_mask1 & ~green_mask2]
-
-        # Convert the combined array back to an image
-        combined_image = Image.fromarray(combined_arr)
-
-        # Save or show the combined image
-        return combined_image
-
-    def update_seen_digits_display(self):
-        """Updates the label that displays the seen digits."""
-        
-        # Show all seen areas
-        seen_areas_text = "\n".join(map(self.digit2gastric, self.digit_recognizer.seen_digits))
-        self.areas_seen_data_label.config(text=seen_areas_text)
-        
-        # Check which areas have not been seen and show them
-        all_digits = set(np.arange(num_classes))
-        unseen_digits = all_digits - self.digit_recognizer.seen_digits
-        self.areas_to_be_seen_data_label.config(text="\n".join(map(self.digit2gastric, unseen_digits)))
-        
-        # CHANGE IMAGE
-        image_folder = "GastroCheck/GI-Tract-Images/"
-        
-        # Initialize the background with the default image
-        background = Image.open(os.path.join(image_folder, "ProcedureEGD.png")).convert("RGBA")
-        
-        if seen_areas_text != "":
-            numbers_list = sorted(self.digit_recognizer.seen_digits)
-            
-            # Check if exactly 4 digits are recognized
-            if len(numbers_list) == self.num_classes:
-                image_name = "ProcedureEGD-all.png"
-                background = Image.open(os.path.join(image_folder, image_name)).convert("RGBA")
-            else:
-                # Loop through recognized digits and overlay images
-                for n in numbers_list:
-                    image_path = os.path.join(image_folder, f"ProcedureEGD-{n}.png")
-                    overlay = Image.open(image_path).convert("RGBA")
-                    background = self.combine_images(background, overlay)
-
-        # Resize and update the label with the new image
-        self.gi_image = background.resize((400, 600), Image.Resampling.LANCZOS)
-        gi_image_tk = ImageTk.PhotoImage(self.gi_image)
-        
-        # Keep a reference to avoid garbage collection
-        self.gi_image.imgtk = gi_image_tk
-        self.gi_label.config(image=gi_image_tk)
-
-    def update_detecting_digits_display(self, predicted_class):
-        """Updates the label that displays the seen digits."""
-        self.current_area_data_label.config(text=self.digit2gastric(predicted_class))
-
-    def stop(self):
-        """Stops the video feed and releases the camera."""
-        self.running = False
-        self.cap.release()
-
+from motionMetrics import MotionMetrics
+from realTimeDigitRecognition import RealTimeDigitRecognition
+from videoFeed import VideoFeed
 class Application:
-    def __init__(self, root, model, tracker, image_size, labelshift, num_classes):
+    def __init__(self, root, model, should_use_tracker,  tracker, image_size, label_shift, num_classes, video_port):
         """
         Initializes the application by setting up the main window and configuring necessary components.
 
@@ -330,19 +69,21 @@ class Application:
         self.style.configure("TFrame", background="white")
 
         self.image_size = image_size
-        self.labelshift = labelshift
+        self.label_shift = label_shift
         self.num_classes = num_classes
+        self.should_use_tracker = should_use_tracker
 
-        self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size, labelshift=labelshift)
+        self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size, label_shift=label_shift)
         self.setup_ui()
 
-        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.areas_seen_data_label, self.current_area_data_label, self.areas_to_be_seen_data_label, self.gi_label, self.num_classes)
+        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.areas_seen_data_label, self.current_area_data_label, self.areas_to_be_seen_data_label, self.gi_label, self.num_classes, video_port=video_port)
         self.start_time = None
         self.running_timer = False
         self.is_procedure_running = False
         self.update_data_flag = False
         self.tracker = tracker
         self.Tracked_Motion_Data = []
+        self.motion_metrics = MotionMetrics()
 
     def setup_ui(self):
         """
@@ -596,7 +337,6 @@ class Application:
         label.pack(anchor="w")  # Align the labels to the left inside the parent frame
         return label
 
-
     def create_gi_frame(self):
         """
         Creates and configures a frame to display a graphical image in the user interface.
@@ -620,13 +360,13 @@ class Application:
             trans_matrix = self.butterworth_filter(trans_matrix)
     
         metrics = {
-            'time': round(self.calculate_time(timestamp_array), 3),
-            'path_length': round(self.calculate_path_length(trans_matrix), 3),
-            'angular_length': round(self.calculate_angular_length(trans_matrix), 3),
-            'response_orientation': round(self.calculate_response_orientation(trans_matrix), 3),
-            'depth_perception': round(self.calculate_depth_perception(trans_matrix), 3),
-            'motion_smoothness': round(self.calculate_motion_smoothness(trans_matrix, timestamp_array), 3),
-            'average_velocity': round(self.calculate_average_velocity(trans_matrix, timestamp_array), 3)
+            'time': round(self.motion_metrics.calculate_time(timestamp_array), 3),
+            'path_length': round(self.motion_metrics.calculate_path_length(trans_matrix), 3),
+            'angular_length': round(self.motion_metrics.calculate_angular_length(trans_matrix), 3),
+            'response_orientation': round(self.motion_metrics.calculate_response_orientation(trans_matrix), 3),
+            'depth_perception': round(self.motion_metrics.calculate_depth_perception(trans_matrix), 3),
+            'motion_smoothness': round(self.motion_metrics.calculate_motion_smoothness(trans_matrix, timestamp_array), 3),
+            'average_velocity': round(self.motion_metrics.calculate_average_velocity(trans_matrix, timestamp_array), 3)
         }
         self.update_labels(metrics)
 
@@ -740,7 +480,8 @@ class Application:
         self.update_timer()
 
         self.is_procedure_running = True
-        threading.Thread(target=self.save_tracked_data_to_variable).start()
+        if self.should_use_tracker:
+            threading.Thread(target=self.save_tracked_data_to_variable).start()
         self.update_data_flag = True
         self.start_button.config(text="Stop Procedure", command=self.stop_procedure)
 
@@ -804,46 +545,46 @@ class Application:
         style = ttk.Style()
         style.configure("Timer.TLabel", foreground="red" if minutes < 7 else "green")
         self.timer_label.config(style="Timer.TLabel")
-
-        tracker.stop_tracking()
-
-        # Prompt the user whether to save the tracked data
-        should_save = messagebox.askyesno("Save Tracked Data File", "Would you like to save the log file containing the tracked data?")
         
-        if should_save:
-            # Ask for the procedure name
-            procedure_name = simpledialog.askstring("Procedure Name", "Please enter the procedure name:")
+        if self.should_use_tracker:
+            tracker.stop_tracking()
+            # Prompt the user whether to save the tracked data
+            should_save = messagebox.askyesno("Save Tracked Data File", "Would you like to save the log file containing the tracked data?")
             
-            if procedure_name:
-                # Create a new window for selecting skill level
-                skill_window = tk.Toplevel()
-                skill_window.title("Select Skill Level")
+            if should_save:
+                # Ask for the procedure name
+                procedure_name = simpledialog.askstring("Procedure Name", "Please enter the procedure name:")
+                
+                if procedure_name:
+                    # Create a new window for selecting skill level
+                    skill_window = tk.Toplevel()
+                    skill_window.title("Select Skill Level")
 
-                # Variable to hold the selected skill level
-                skill_level = tk.StringVar(value="Novice")  # Default selection
+                    # Variable to hold the selected skill level
+                    skill_level = tk.StringVar(value="Novice")  # Default selection
 
-                # Create checkboxes for skill levels
-                novice_checkbox = tk.Radiobutton(skill_window, text="Novice", variable=skill_level, value="Novice")
-                intermediate_checkbox = tk.Radiobutton(skill_window, text="Intermediate", variable=skill_level, value="Intermediate")
-                expert_checkbox = tk.Radiobutton(skill_window, text="Expert", variable=skill_level, value="Expert")
+                    # Create checkboxes for skill levels
+                    novice_checkbox = tk.Radiobutton(skill_window, text="Novice", variable=skill_level, value="Novice")
+                    intermediate_checkbox = tk.Radiobutton(skill_window, text="Intermediate", variable=skill_level, value="Intermediate")
+                    expert_checkbox = tk.Radiobutton(skill_window, text="Expert", variable=skill_level, value="Expert")
 
-                # Pack the checkboxes
-                novice_checkbox.pack(anchor='w')
-                intermediate_checkbox.pack(anchor='w')
-                expert_checkbox.pack(anchor='w')
+                    # Pack the checkboxes
+                    novice_checkbox.pack(anchor='w')
+                    intermediate_checkbox.pack(anchor='w')
+                    expert_checkbox.pack(anchor='w')
 
-                # Button to confirm the selection
-                def confirm_selection():
-                    skill_window.destroy()  # Close the selection window
-                    # Call the method to save the tracked data with the procedure name and skill level
-                    self.save_tracked_data_to_file(procedure_name, skill_level.get())
+                    # Button to confirm the selection
+                    def confirm_selection():
+                        skill_window.destroy()  # Close the selection window
+                        # Call the method to save the tracked data with the procedure name and skill level
+                        self.save_tracked_data_to_file(procedure_name, skill_level.get())
 
-                confirm_button = tk.Button(skill_window, text="Confirm", command=confirm_selection)
-                confirm_button.pack(pady=10)
+                    confirm_button = tk.Button(skill_window, text="Confirm", command=confirm_selection)
+                    confirm_button.pack(pady=10)
 
-                skill_window.mainloop()
-            else:
-                messagebox.showwarning("Warning", "Procedure name cannot be empty.")
+                    skill_window.mainloop()
+                else:
+                    messagebox.showwarning("Warning", "Procedure name cannot be empty.")
 
         self.start_button.config(text="Procedure Stopped", state="disabled")
         self.start_again_button.pack()
@@ -992,127 +733,56 @@ class Application:
         """
         self.video_feed.stop()
         self.root.destroy()
-        self.tracker.close()
-
-
-    # Motion Metric Calculators
-    def calculate_time(self, timeStamps):
-        if len(timeStamps) > 1:
-            result = timeStamps[-1] - timeStamps[0]
-        else:
-            result = 0  # or handle the case appropriately, maybe setting result to 0 or some default value
-
-        result = round(result*10)/10
-        return result
-
-    def calculate_path_length(self, Tvector):
-        result = 0
-        for i in range(1,len(Tvector)):
-            result = result + math.sqrt((Tvector[i][0][3]-Tvector[i - 1][0][3])**2+(Tvector[i][1][3]-Tvector[i - 1][1][3])**2+(Tvector[i][2][3]-Tvector[i - 1][2][3])**2)
-        result = result/1000
-        result = round(result*100)/100
-        return result
-
-    def calculate_angular_length(self, Tvector):
-        resultXY=0
-        for i in range(1,len(Tvector)):
-            temp=self.calculateAngleDistance(Tvector[i],Tvector[i - 1])
-            resultXY=resultXY + math.sqrt(temp[0]**2+temp[1]**2)
-        return resultXY
-
-    def calculateAngleDistance(self, T1,T2):
-        angles = [0,0,0]
-        R11=T2[0][0] * T1[0][0] + T2[0][1] * T1[0][1] + T2[0][2] * T1[0][2]
-        R21=T2[1][0] * T1[0][0] + T2[1][1] * T1[0][1] + T2[1][2] * T1[0][2]
-        R31=T2[2][0] * T1[0][0] + T2[2][1] * T1[0][1] + T2[2][2] * T1[0][2]
-        R32=T2[2][0] * T1[1][0] + T2[2][1] * T1[1][1] + T2[2][2] * T1[1][2]
-        R33=T2[2][0] * T1[2][0] + T2[2][1] * T1[2][1] + T2[2][2] * T1[2][2]
-        angles[0]=math.atan2(R21,R11)
-        angles[1]=math.atan2(- R31,math.sqrt(R32 * R32 + R33 * R33))
-        angles[2]=math.atan2(R32,R33)
-        return angles
-
-    def calculate_response_orientation(self, Tvector):
-        result=0
-        for i in range(1,len(Tvector)):
-            temp=self.calculateAngleDistance(Tvector[i],Tvector[i - 1])
-            result=result + math.fabs(temp[2])
-        return result
-
-    def calculate_depth_perception(self, Tvector):
-        result = 0
-        for i in range(1,len(Tvector)):
-            result = result + math.fabs((Tvector[i][2][3]-Tvector[i - 1][2][3]))
-        return result/1000
-
-    def calculate_motion_smoothness(self, Tvector, timeStamps):
-        if len(timeStamps) < 1:
-            return 0
-        
-        T=timeStamps[-1];
-        d1x_dt1=[]; d1y_dt1=[]; d1z_dt1=[]; deltaT = []; timeStampsNew = [];
-        for i in range(1,len(Tvector)):
-            deltaT.append(timeStamps[i]-timeStamps[i-1])
-            d1x_dt1.append((Tvector[i][0][3] - Tvector[i-1][0][3]) / deltaT[i-1])
-            d1y_dt1.append((Tvector[i][1][3] - Tvector[i-1][1][3]) / deltaT[i-1])
-            d1z_dt1.append((Tvector[i][2][3] - Tvector[i-1][2][3]) / deltaT[i-1])
-            timeStampsNew.append((timeStamps[i]+timeStamps[i-1])/2)
-        timeStamps = timeStampsNew
-
-        d2x_dt2=[]; d2y_dt2=[]; d2z_dt2=[]; deltaT = []; timeStampsNew = [];
-        for i in range(1,len(d1x_dt1)):
-            deltaT.append(timeStamps[i]-timeStamps[i-1])
-            d2x_dt2.append((d1x_dt1[i] - d1x_dt1[i-1]) / deltaT[i-1])
-            d2y_dt2.append((d1y_dt1[i] - d1y_dt1[i-1]) / deltaT[i-1])
-            d2z_dt2.append((d1z_dt1[i] - d1z_dt1[i-1]) / deltaT[i-1])
-            timeStampsNew.append((timeStamps[i]+timeStamps[i-1])/2)
-        timeStamps = timeStampsNew
-
-        d3x_dt3=[]; d3y_dt3=[]; d3z_dt3=[]; deltaT = []; timeStampsNew = [];
-        for i in range(1,len(d2x_dt2)):
-            deltaT.append(timeStamps[i]-timeStamps[i-1])
-            d3x_dt3.append((d2x_dt2[i] - d2x_dt2[i-1]) / deltaT[i-1])
-            d3y_dt3.append((d2y_dt2[i] - d2y_dt2[i-1]) / deltaT[i-1])
-            d3z_dt3.append((d2z_dt2[i] - d2z_dt2[i-1]) / deltaT[i-1])
-            timeStampsNew.append((timeStamps[i]+timeStamps[i-1])/2)
-        timeStamps = timeStampsNew
-
-        j = [(x**2 + y**2 +z**2) for x, y ,z in zip(d3x_dt3, d3y_dt3, d3z_dt3)]
-        MS = math.sqrt((1 / (2*T)) * np.trapz(j,timeStamps))
-        return MS*10**6     # m/s^3
-
-    def calculateVelocity(self, Tvector,timeStamps):
-        velocity = []
-        for i in range(1,len(Tvector)):
-            distance = math.sqrt((Tvector[i][0][3]-Tvector[i - 1][0][3])**2+(Tvector[i][1][3]-Tvector[i - 1][1][3])**2+(Tvector[i][2][3]-Tvector[i - 1][2][3])**2)
-            deltaT = timeStamps[i]-timeStamps[i-1]
-            velocity.append(distance / deltaT * 1000)
-        return velocity # mm/s
-
-    def calculate_average_velocity(self, Tvector,timeStamps):
-        if len(timeStamps) < 1:
-            return 0
-        meanVelocity = np.mean(self.calculateVelocity(Tvector,timeStamps))
-        return meanVelocity
-
+        if self.should_use_tracker:
+            self.tracker.close()
 
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
     model = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_Colours-Patterns-8Sites_100x100.h5")
-    labelshift = False # Change to True if a labelshift of (+1) is used in the training data (if the training data contains a -1 class)
+    label_shift = False # Change to True if a label_shift of (+1) is used in the training data (if the training data contains a -1 class)
     num_classes= 8
-
-    # Set up the tracker
-    settings_aurora = {
-        "tracker type": "aurora",
-        "serial port": 3, # Specify port 4 explicitly
-        "verbose": True,
-    }
-    tracker = NDITracker(settings_aurora)
+    image_size=(100, 100, 3)
+    
+    should_use_tracker = messagebox.askyesno("NDI Tracker", "Would you like to use a NDI Tracker during the procedure?")
+    video_port = simpledialog.askinteger("Video Port", "Please specify the Video port:")
+    
+    if video_port is None:
+        messagebox.showwarning("Input Error", "Video port must be specified.")
+        quit()
+        
+    tracker = None
+    if should_use_tracker:
+        # Ask for tracker and video feed ports
+        tracker_port = simpledialog.askinteger("Tracker Port", "Please specify the tracker port (enter -1 to probe all ports):")
+        
+        if tracker_port is not None:
+            # Check if the tracker port is set to -1 (probe all ports)
+            if tracker_port == -1:
+                settings_aurora = {
+                    "tracker type": "aurora",
+                    "ports to probe": 5,  # indicates probing all ports
+                    "verbose": True,
+                }
+                print("Probing all available ports for the tracker.")
+            else:
+                # Set up the tracker with the specified port
+                settings_aurora = {
+                    "tracker type": "aurora",
+                    "serial port": tracker_port,  # Use specified tracker port
+                    "verbose": True,
+                }
+                print(f"Tracker will use port: {tracker_port}")
+            
+            # Initialize tracker with the specified settings
+            tracker = NDITracker(settings_aurora)
+        else:
+            messagebox.showwarning("Input Error", "Tracker port must be specified.")
+    else:
+        print("Tracker not being used.")
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model, tracker, image_size=(100, 100, 3), labelshift=labelshift, num_classes=num_classes) # Replace with your image size of file
+    app = Application(root, model=model, should_use_tracker=should_use_tracker, tracker=tracker, image_size=image_size, label_shift=label_shift, num_classes=num_classes, video_port=video_port) # Replace with your image size of file
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

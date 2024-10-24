@@ -581,8 +581,6 @@ class Application:
 
                     confirm_button = tk.Button(skill_window, text="Confirm", command=confirm_selection)
                     confirm_button.pack(pady=10)
-
-                    skill_window.mainloop()
                 else:
                     messagebox.showwarning("Warning", "Procedure name cannot be empty.")
 

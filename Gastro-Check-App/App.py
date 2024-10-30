@@ -22,7 +22,7 @@ from motionMetrics import MotionMetrics
 from realTimeDigitRecognition import RealTimeDigitRecognition
 from videoFeed import VideoFeed
 class Application:
-    def __init__(self, root, model, should_use_tracker,  tracker, image_size, label_shift, num_classes, video_port):
+    def __init__(self, root, locationModel, insideOutsideModel, should_use_tracker,  tracker, image_size, label_shift, num_classes, video_port):
         """
         Initializes the application by setting up the main window and configuring necessary components.
 
@@ -73,7 +73,7 @@ class Application:
         self.num_classes = num_classes
         self.should_use_tracker = should_use_tracker
 
-        self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size, label_shift=label_shift)
+        self.digit_recognizer = RealTimeDigitRecognition(locationModel, self.image_size, label_shift=label_shift)
         self.setup_ui()
 
         self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.areas_seen_data_label, self.current_area_data_label, self.areas_to_be_seen_data_label, self.gi_label, self.num_classes, video_port=video_port)
@@ -737,7 +737,8 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    model = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_NEW_GastroBroncho_Colours_Pattern_8sites_500x500.h5")
+    locationModel = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_NEW_GastroBroncho_Colours_Pattern_8sites_500x500.h5")
+    insideOutsideModel = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_InsideOutside_500x500.h5")
     label_shift = False # Change to True if a label_shift of (+1) is used in the training data (if the training data contains a -1 class)
     num_classes= 8
     image_size=(500, 500, 3)
@@ -781,6 +782,6 @@ if __name__ == "__main__":
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model=model, should_use_tracker=should_use_tracker, tracker=tracker, image_size=image_size, label_shift=label_shift, num_classes=num_classes, video_port=video_port) # Replace with your image size of file
+    app = Application(root, locationModel=locationModel, insideOutsideModel=insideOutsideModel, should_use_tracker=should_use_tracker, tracker=tracker, image_size=image_size, label_shift=label_shift, num_classes=num_classes, video_port=video_port) # Replace with your image size of file
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

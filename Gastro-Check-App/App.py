@@ -737,10 +737,10 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    model = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_GastroBroncho_Colours_Pattern_8sites_224x224.h5")
+    model = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_NEW_GastroBroncho_Colours_Pattern_8sites_500x500.h5")
     label_shift = False # Change to True if a label_shift of (+1) is used in the training data (if the training data contains a -1 class)
     num_classes= 8
-    image_size=(224, 224, 3)
+    image_size=(500, 500, 3)
     
     should_use_tracker = messagebox.askyesno("NDI Tracker", "Would you like to use a NDI Tracker during the procedure?")
     video_port = simpledialog.askinteger("Video Port", "Please specify the Video port:")

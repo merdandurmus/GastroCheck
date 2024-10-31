@@ -20,9 +20,10 @@ from tkinter import ttk
 from sksurgerynditracker.nditracker import NDITracker
 from motionMetrics import MotionMetrics
 from realTimeDigitRecognition import RealTimeDigitRecognition
+from realTimeInsideOutsideRecognition import RealTimeInsideOutsideRecognition
 from videoFeed import VideoFeed
 class Application:
-    def __init__(self, root, model, should_use_tracker,  tracker, image_size, label_shift, num_classes, video_port):
+    def __init__(self, root, locationModel, insideOutsideModel, should_use_tracker,  tracker, loc_image_size, inout_image_size, label_shift, num_classes, video_port):
         """
         Initializes the application by setting up the main window and configuring necessary components.
 
@@ -53,13 +54,8 @@ class Application:
         - **root (Tk)**: The root window of the Tkinter application.
         - **model (object)**: The model used for digit recognition in real-time.
         - **tracker (object)**: The tracker object used for capturing motion data.
-
-        Returns:
-        - **None**: This method initializes various attributes and components but does not return any values.
-
-        Example:
-        - Creating an instance of this class will set up the main window with the specified title and background color, initialize the digit recognizer, set up the user interface, and prepare components for handling video and motion tracking.
         """
+        
         self.root = root
         self.root.title("Gastro-Check")
         self.style = ttk.Style()
@@ -68,15 +64,17 @@ class Application:
         self.style.configure("TLabel", background="white", foreground="black", font=("Arial", 12))
         self.style.configure("TFrame", background="white")
 
-        self.image_size = image_size
+        self.loc_image_size = loc_image_size
+        self.inout_image_size = inout_image_size
         self.label_shift = label_shift
         self.num_classes = num_classes
         self.should_use_tracker = should_use_tracker
 
-        self.digit_recognizer = RealTimeDigitRecognition(model, self.image_size, label_shift=label_shift)
+        self.digit_recognizer = RealTimeDigitRecognition(locationModel, self.loc_image_size, label_shift=label_shift)
+        self.inside_outside_recognizer = RealTimeInsideOutsideRecognition(insideOutsideModel, self.inout_image_size)
         self.setup_ui()
 
-        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.areas_seen_data_label, self.current_area_data_label, self.areas_to_be_seen_data_label, self.gi_label, self.num_classes, video_port=video_port)
+        self.video_feed = VideoFeed(self.root, self.video_frame, self.digit_recognizer, self.inside_outside_recognizer, self.areas_seen_data_label, self.current_area_data_label, self.areas_to_be_seen_data_label, self.inside_outside_data_label, self.gi_label, self.num_classes, video_port=video_port)
         self.start_time = None
         self.running_timer = False
         self.is_procedure_running = False
@@ -246,6 +244,11 @@ class Application:
 
         self.current_area_data_label = ttk.Label(self.current_areas_frame, text="")
         self.current_area_data_label.pack()
+        
+        self.inside_outside_label = ttk.Label(self.current_areas_frame, text="Inside/Outside", style="Blue.TLabel")
+        self.inside_outside_label.pack()
+        self.inside_outside_data_label = ttk.Label(self.current_areas_frame, text="")
+        self.inside_outside_data_label.pack()
         
         # Adding area's seen information in the areas_frame
         self.areas_seen_label = ttk.Label(self.areas_frame, text="Gastric Area's Seen", style="Green.TLabel")
@@ -737,10 +740,12 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    model = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_NEW_GastroBroncho_Colours_Pattern_8sites_500x500.h5")
+    locationModel = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_NEW_GastroBroncho_Colours_Pattern_8sites_500x500.h5")
+    insideOutsideModel = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_InsideOutside_500x500.h5")
     label_shift = False # Change to True if a label_shift of (+1) is used in the training data (if the training data contains a -1 class)
     num_classes= 8
-    image_size=(500, 500, 3)
+    loc_image_size=(500, 500, 3)
+    inout_image_size=(500, 500, 3)
     
     should_use_tracker = messagebox.askyesno("NDI Tracker", "Would you like to use a NDI Tracker during the procedure?")
     video_port = simpledialog.askinteger("Video Port", "Please specify the Video port:")
@@ -781,6 +786,6 @@ if __name__ == "__main__":
 
     # Call the App
     root = tk.Tk()
-    app = Application(root, model=model, should_use_tracker=should_use_tracker, tracker=tracker, image_size=image_size, label_shift=label_shift, num_classes=num_classes, video_port=video_port) # Replace with your image size of file
+    app = Application(root, locationModel=locationModel, insideOutsideModel=insideOutsideModel, should_use_tracker=should_use_tracker, tracker=tracker, loc_image_size=loc_image_size, inout_image_size=inout_image_size, label_shift=label_shift, num_classes=num_classes, video_port=video_port) # Replace with your image size of file
     root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()

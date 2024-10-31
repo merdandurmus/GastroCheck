@@ -5,7 +5,7 @@ from PIL import Image, ImageTk
 
 
 class VideoFeed:
-    def __init__(self, window, video_frame, digit_recognizer, areas_seen_data_label, current_area_data_label, areas_to_be_seen_data_label, gi_label, num_classes, video_port):
+    def __init__(self, window, video_frame, digit_recognizer, inside_outside_recognizer, areas_seen_data_label, current_area_data_label, areas_to_be_seen_data_label, inside_outside_data_label, gi_label, num_classes, video_port):
         """
         Initializes the VideoFeed object for capturing and displaying video frames.
 
@@ -27,9 +27,11 @@ class VideoFeed:
         self.cap = cv2.VideoCapture(video_port) #1 FOR VIDEO CAPTURE
         self.running = True
         self.digit_recognizer = digit_recognizer
+        self.inside_outside_recognizer = inside_outside_recognizer
         self.areas_seen_data_label = areas_seen_data_label
         self.current_area_data_label = current_area_data_label
         self.areas_to_be_seen_data_label = areas_to_be_seen_data_label
+        self.inside_outside_data_label = inside_outside_data_label
         self.frame_update_delay = 100  # Delay in ms for video frame updates
         self.num_classes = num_classes
 
@@ -40,9 +42,11 @@ class VideoFeed:
         if self.running:
             ret, frame = self.read_frame()
             if ret:
-                predicted_class = self.process_frame_and_recognize_digit(frame)
+                predicted_loc = self.process_frame_and_recognize_loc(frame)
+                predicted_inside_outside = self.process_frame_and_recognize_inside_outside(frame)
                 self.display_frame(frame)
-                self.update_detecting_digits_display(predicted_class)
+                self.update_detecting_digits_display(predicted_loc)
+                self.update_detecting_inside_outside_display(predicted_inside_outside)
 
                 # Update seen digits display if procedure is running
                 if self.digit_recognizer.update_digits:
@@ -55,9 +59,14 @@ class VideoFeed:
         """Reads a frame from the video feed."""
         return self.cap.read()
 
-    def process_frame_and_recognize_digit(self, frame):
+    def process_frame_and_recognize_loc(self, frame):
         """Processes the frame for digit recognition and returns the predicted class."""
         predicted_class = self.digit_recognizer.process_frame(frame)
+        return predicted_class
+    
+    def process_frame_and_recognize_inside_outside(self, frame):
+        """Processes the frame for digit recognition and returns the predicted class."""
+        predicted_class = self.inside_outside_recognizer.process_frame(frame)
         return predicted_class
 
     def display_frame(self, frame):
@@ -85,8 +94,6 @@ class VideoFeed:
         bottom = height
         
         img_cropped = img.crop((left, top, right, bottom))
-        
-        
         img_resized = img_cropped.resize((1200, 700), Image.Resampling.LANCZOS)
         imgtk = ImageTk.PhotoImage(image=img_resized)
         self.video_frame.imgtk = imgtk
@@ -105,8 +112,15 @@ class VideoFeed:
         }
         return digit_map.get(digit, "No Anatomical Landmark Present")
     
+    def digit2inside_outside(self, digit):
+        digit_map = {
+            0: "Outside",
+            1: "Inside",
+        }
+        return digit_map.get(digit, "No Recognition Possible")
+    
     def combine_images(self, img1, img2):    
-         # Ensure images are in RGBA format
+        # Ensure images are in RGBA format
         img1 = img1.convert("RGBA")
         img2 = img2.convert("RGBA")
         
@@ -178,6 +192,10 @@ class VideoFeed:
     def update_detecting_digits_display(self, predicted_class):
         """Updates the label that displays the seen digits."""
         self.current_area_data_label.config(text=self.digit2gastric(predicted_class))
+    
+    def update_detecting_inside_outside_display(self, predicted_class):
+        """Updates the label that displays the seen digits."""
+        self.inside_outside_data_label.config(text=self.digit2inside_outside(predicted_class))
 
     def stop(self):
         """Stops the video feed and releases the camera."""

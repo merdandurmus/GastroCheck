@@ -1,21 +1,20 @@
-
 # Gastro-Check
 
-Gastro-Check is a Python-based application designed for tracking and evaluating Gastro-Intestinal (GI) tract imagery. This project integrates machine learning models to analyze GI images, facilitating real-time digit recognition and tracking of relevant data for medical analysis.
+Gastro-Check is a Python-based application designed for tracking and evaluating the performance metrics of an esophagogastroduodenoscopy in the Gastro-Intestinal (GI) tract. This project integrates machine learning models to analyze GI images, facilitating real-time gastric site recognition and tracking of relevant perfmance metric data for medical/performance analysis.
 
 ## Project Structure
 
-- **GI-Tract-Images**: Contains image data of the GI tract used for training, testing, or evaluation purposes.
+- **GI-Tract-Images**: Contains image data of the GI tract used for visualition of the gastric areas seen.
 - **Gastro-Check-App**: The main application directory for Gastro-Check, containing all core scripts, including tracking and AI evaluation functionalities.
 - **README.md**: Documentation and overview of the project.
 - **requirements.txt**: List of dependencies required to run the project.
 
 ## Features
 
-- **Real-Time Digit Recognition**: Utilizes a Convolutional Neural Network (CNN) to perform real-time recognition of digits related to medical imagery.
-- **GI Tract Tracking**: Provides live tracking of motion metrics for GI tract analysis.
+- **Real-Time Gastric Site Recognition**: Utilizes a Convolutional Neural Network (CNN) to perform real-time recognition of gastric sites.
+- **Electro-Magnetic Endoscope Tracking**: Provides live tracking of endoscope tip movement using the [Aurora EM Tracking system](https://www.ndigital.com/electromagnetic-tracking-technology/aurora/).
 - **Image-Based Analysis**: Uses machine learning to analyze colored patterns and features within GI images.
-- **Custom Data Visualization**: Displays tracked data metrics like time, path length, angular length, response orientation, and more.
+- **Custom Performance Data Visualization & Analyzation**: Displays tracked data metrics like time, path length, angular length, response orientation, and more.
 - **User-Friendly Interface**: Intuitive GUI for medical professionals to use the app without technical barriers.
 
 ## Getting Started
@@ -43,7 +42,7 @@ cd Gastro-Check-App
 
 Then execute the main script:
 ```bash
-python main.py
+python app.py
 ```
 
 ## Usage
@@ -57,15 +56,9 @@ python main.py
 ### Training the Model
 To train or retrain the AI model used for analysis:
 
-1. Prepare your dataset and place it in the `GI-Tract-Images` directory.
+1. Prepare your dataset and place it in a `Training_Images_GI-Tract` directory.
 2. Modify the training parameters if necessary.
 3. Run the training script provided in the `Gastro-Check-App` folder.
-
-### Testing
-For testing the trained model's performance, run the following command:
-```bash
-python evaluateAI.py
-```
 
 ## Contributing
 
@@ -88,4 +81,4 @@ This project is licensed under the MIT License - see the `LICENSE` file for deta
 
 ## Contact
 
-For any questions or feedback, please contact Merdan at [your-email@example.com].
+For any questions or feedback, please contact Merdan at [merdan.durmus@sintef.no].

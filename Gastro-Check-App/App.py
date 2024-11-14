@@ -19,7 +19,7 @@ from tkinter import ttk
 
 from sksurgerynditracker.nditracker import NDITracker
 from motionMetrics import MotionMetrics
-from realTimeDigitRecognition import RealTimeDigitRecognition
+from realTimeGastricSiteRecognition import RealTimeGastricSiteRecognition
 from realTimeInsideOutsideRecognition import RealTimeInsideOutsideRecognition
 from videoFeed import VideoFeed
 class Application:
@@ -70,7 +70,7 @@ class Application:
         self.num_classes = num_classes
         self.should_use_tracker = should_use_tracker
 
-        self.digit_recognizer = RealTimeDigitRecognition(locationModel, self.loc_image_size, label_shift=label_shift)
+        self.digit_recognizer = RealTimeGastricSiteRecognition(locationModel, self.loc_image_size, label_shift=label_shift)
         self.inside_outside_recognizer = RealTimeInsideOutsideRecognition(insideOutsideModel, self.inout_image_size)
         self.setup_ui()
 

@@ -1,10 +1,10 @@
 import cv2
 import numpy as np
 
-class RealTimeDigitRecognition:
+class RealTimeGastricSiteRecognition:
     def __init__(self, model, image_size, label_shift):
         """
-        Initializes the RealTimeDigitRecognition object for recognizing digits in video frames.
+        Initializes the RealTimeGastricSiteRecognition object for recognizing digits in video frames.
 
         Parameters:
         - **model (object)**: The digit recognition model used for identifying digits.

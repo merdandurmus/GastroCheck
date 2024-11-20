@@ -101,14 +101,13 @@ class VideoFeed:
         
     def digit2gastric(self, digit):
         digit_map = {
-            0: "Esophagus (Purple)",
-            1: "Gastroesophageal Junction (Yellow)",
-            2: "Cardia (Blue)",
-            3: "Body (Greater Curvature) (Green)",
-            4: "Fundus (Red)",
-            5: "Pylorus (Pink)",
-            6: "Duodenal Bulb (White)",
-            7: "Second Part of the Duodenum (Orange)",
+            0: "Esophagus (Yellow)",
+            1: "Cardia (Blue)",
+            2: "Fundus (Red)",
+            3: "Body (Greater Curvature) (Orange)",
+            4: "Incisura Angularis  (Black)",
+            5: "Antrum (Green)",
+            6: "Duodenum (Purple)",
         }
         return digit_map.get(digit, "No Anatomical Landmark Present")
     

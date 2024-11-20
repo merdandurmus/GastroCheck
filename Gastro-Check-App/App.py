@@ -740,10 +740,10 @@ class Application:
 # Main Application Entry
 if __name__ == "__main__":
     # Load your trained CNN model
-    locationModel = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_NEW_GastroBroncho_Colours_Pattern_8sites_500x500.h5")
+    locationModel = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_NewModel_Gastro_Colours_Pattern_7sites_500x500.h5")
     insideOutsideModel = keras.saving.load_model("GastroCheck/Data/models/INCEPTIONV3_InsideOutside_500x500.h5")
     label_shift = False # Change to True if a label_shift of (+1) is used in the training data (if the training data contains a -1 class)
-    num_classes= 8
+    num_classes= 7
     loc_image_size=(500, 500, 3)
     inout_image_size=(500, 500, 3)
     

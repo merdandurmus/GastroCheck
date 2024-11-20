@@ -3,7 +3,7 @@ import os
 
 # Paths
 video_folder = 'GastroCheck/Data/Video/TESTColorPatternNewModelGasto'
-output_folder = 'GastroCheck/Data/TEST/TEST_NewModel_GastroBroncho_Colours_Pattern_8sites'
+output_folder = 'GastroCheck/Data/TEST/TEST_NewModel_GastroBroncho_Colours_Pattern_7sites'
 
 # Ensure the output folder exists
 if not os.path.exists(output_folder):

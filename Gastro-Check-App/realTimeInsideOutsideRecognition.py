@@ -25,7 +25,7 @@ class RealTimeInsideOutsideRecognition:
         max_prediction = np.max(predictions)
         predicted_class = np.argmax(predictions)
         
-        if max_prediction < 0.90:
+        if max_prediction < 0.95:
             return -1
         return predicted_class
 

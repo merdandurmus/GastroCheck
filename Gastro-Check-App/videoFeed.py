@@ -118,35 +118,36 @@ class VideoFeed:
         }
         return digit_map.get(digit, "No Recognition Possible")
     
-    def combine_images(self, img1, img2):    
+    def combine_images(self, img1, img2):
+        """
+        Combines two images, preferring green pixels over white pixels, in a more efficient way.
+        """
         # Ensure images are in RGBA format
         img1 = img1.convert("RGBA")
         img2 = img2.convert("RGBA")
         
         # Convert images to numpy arrays
-        arr1 = np.array(img1)
-        arr2 = np.array(img2)
-
-        # Create masks for green pixels in both images
-        # Assuming the green color is defined as R=0, G=255, B=0
-        green_mask1 = (arr1[:, :, 0] == 0) & (arr1[:, :, 1] == 255) & (arr1[:, :, 2] == 0)
-        green_mask2 = (arr2[:, :, 0] == 0) & (arr2[:, :, 1] == 255) & (arr2[:, :, 2] == 0)
-
-        # Create a new array for the output image
-        combined_arr = np.zeros_like(arr1)
-
-        # Combine images based on green masks
-        combined_arr[green_mask1] = arr1[green_mask1]
-        combined_arr[green_mask2] = arr2[green_mask2]
-
-        # Fill in non-green pixels from both images (where they are not green in either)
-        combined_arr[~green_mask1 & ~green_mask2] = arr1[~green_mask1 & ~green_mask2]
-
+        array1 = np.array(img1)
+        array2 = np.array(img2)
+        
+        # Extract RGB channels for both images
+        r1, g1, b1, a1 = array1[..., 0], array1[..., 1], array1[..., 2], array1[..., 3]
+        r2, g2, b2, a2 = array2[..., 0], array2[..., 1], array2[..., 2], array2[..., 3]
+        
+        # Create a mask for when to select pixel2
+        # Prefer pixel2 if it is green and not white
+        mask = (r2 != 255) | (g2 != 255) | (b2 != 255)  # Not white
+        mask &= (g2 > r2) & (g2 > b2)  # Green is dominant
+        
+        # Create the combined image using the mask
+        combined_array = np.where(mask[..., None], array2, array1)
+        
         # Convert the combined array back to an image
-        combined_image = Image.fromarray(combined_arr)
-
-        # Save or show the combined image
+        combined_image = Image.fromarray(combined_array, "RGBA")
+        
         return combined_image
+
+
 
     def update_seen_digits_display(self):
         """Updates the label that displays the seen digits."""
@@ -168,8 +169,10 @@ class VideoFeed:
         
         if seen_areas_text != "":
             numbers_list = sorted(self.digit_recognizer.seen_digits)
+            print("NUMBERS")
+            print(numbers_list)
             
-            # Check if exactly 4 digits are recognized
+            # Check if exactly 6 digits are recognized
             if len(numbers_list) == self.num_classes:
                 image_name = "ProcedureEGD-all.png"
                 background = Image.open(os.path.join(image_folder, image_name)).convert("RGBA")

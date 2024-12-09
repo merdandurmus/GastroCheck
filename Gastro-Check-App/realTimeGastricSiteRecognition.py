@@ -28,7 +28,7 @@ class RealTimeGastricSiteRecognition:
         """Runs the model prediction and returns the predicted class."""
         predictions = self.model.predict(processed_frame)
 
-        print(predictions)
+        #print(predictions)
         max_prediction = np.max(predictions)
         predicted_class = np.argmax(predictions)
         if max_prediction < 0.85:
